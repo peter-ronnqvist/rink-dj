@@ -15,6 +15,9 @@ protocol AudioEngine: AnyObject {
     /// Play a list of resources in order, optionally looping (used for intermission).
     func playPlaylist(_ resources: [AudioResource], loop: Bool)
 
+    /// Play a single resource on repeat until stopped (used for the Timeout cricket loop).
+    func playLooping(_ resource: AudioResource)
+
     /// Stop whatever this engine is currently playing.
     func stop()
 }

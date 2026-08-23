@@ -42,11 +42,12 @@ struct AppConfig: Codable {
                 .localFile(fileName: "demo_intermission.wav")
             ],
             eventTracks: [
-                GameEvent.hemmamal.rawValue:       .localFile(fileName: "demo_goal.wav"),
-                GameEvent.bortamal.rawValue:       .localFile(fileName: "demo_goal.wav"),
+                GameEvent.hemmamal.rawValue:       .localFile(fileName: "FlempanGoal.mp3"),
+                GameEvent.bortamal.rawValue:       .localFile(fileName: "frolic.mp3"),
                 GameEvent.hemmautvisning.rawValue: .localFile(fileName: "demo_penalty.wav"),
                 GameEvent.bortautvisning.rawValue: .localFile(fileName: "demo_penalty.wav"),
-                GameEvent.timeout.rawValue:        .localFile(fileName: "demo_timeout.wav"),
+                GameEvent.fulltalig.rawValue:      .localFile(fileName: "fullStrength.mp3"),
+                GameEvent.timeout.rawValue:        .localFile(fileName: "cricket.mp3"),
                 GameEvent.matchslut.rawValue:      .localFile(fileName: "demo_matchslut.wav")
             ],
             branding: .flemingsbergsIK

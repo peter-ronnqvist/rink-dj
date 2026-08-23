@@ -46,6 +46,14 @@ final class PlaybackCoordinator {
             }
             playOneShot(resource)
             nowPlaying = "\(event.title): \(resource.displayName)"
+
+        case .playLoopedTrack:
+            guard let resource = config.track(for: event) else {
+                nowPlaying = "Ingen låt vald för \(event.title)"
+                return
+            }
+            playLooping(resource)
+            nowPlaying = "\(event.title) (repeterar): \(resource.displayName)"
         }
     }
 
@@ -80,6 +88,11 @@ final class PlaybackCoordinator {
     private func playOneShot(_ resource: AudioResource) {
         stop()
         engine(for: resource)?.playOneShot(resource)
+    }
+
+    private func playLooping(_ resource: AudioResource) {
+        stop()
+        engine(for: resource)?.playLooping(resource)
     }
 
     private func engine(for resource: AudioResource) -> AudioEngine? {

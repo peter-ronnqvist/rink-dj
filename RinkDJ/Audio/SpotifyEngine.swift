@@ -27,6 +27,10 @@ final class SpotifyEngine: AudioEngine {
         resources.forEach(logNotAvailable)
     }
 
+    func playLooping(_ resource: AudioResource) {
+        logNotAvailable(resource)
+    }
+
     func stop() {
         // No-op until the SDK is integrated.
     }
