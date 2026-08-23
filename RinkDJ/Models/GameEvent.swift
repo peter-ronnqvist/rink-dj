@@ -35,6 +35,17 @@ enum GameEvent: String, CaseIterable, Identifiable, Codable {
         }
     }
 
+    /// Shorter label for the compact grid buttons, where long words would otherwise
+    /// wrap awkwardly. Falls back to the full `title` for names that already fit.
+    /// Setup and the now-playing bar keep the full `title`.
+    var shortTitle: String {
+        switch self {
+        case .hemmautvisning: return "Utv. hemma"
+        case .bortautvisning: return "Utv. borta"
+        default:              return title
+        }
+    }
+
     /// Short helper text shown under the title.
     var subtitle: String {
         switch self {

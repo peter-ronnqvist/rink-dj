@@ -13,7 +13,7 @@ struct EventButton: View {
             VStack(spacing: 6) {
                 Image(systemName: event.systemImage)
                     .font(.system(size: 32, weight: .bold))
-                Text(event.title)
+                Text(event.shortTitle)
                     .font(.headline)
                     .multilineTextAlignment(.center)
                 Text(event.subtitle)
