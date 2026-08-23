@@ -30,6 +30,20 @@ enum FileStore {
         return nil
     }
 
+    /// File names of the audio bundled inside the app (mp3/wav), sorted. These are the
+    /// shipped sounds a user can assign to any event from the picker — the file importer
+    /// can only reach user files, not the bundle. The `demo_*` placeholder tones are
+    /// excluded; they remain valid as defaults but aren't offered for selection.
+    static func bundledAudioFileNames() -> [String] {
+        let urls = ["mp3", "wav"].flatMap {
+            Bundle.main.urls(forResourcesWithExtension: $0, subdirectory: nil) ?? []
+        }
+        return urls
+            .map { $0.lastPathComponent }
+            .filter { !$0.lowercased().hasPrefix("demo_") }
+            .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+    }
+
     /// URL of a user-imported branding logo, if the file still exists.
     static func brandingLogoURL(fileName: String) -> URL? {
         let url = branding.appendingPathComponent(fileName)

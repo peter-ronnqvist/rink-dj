@@ -48,7 +48,12 @@ struct ResourcePickerView: View {
                 }
             }
 
-            Section("Välj MP3-fil") {
+            Section("Byt låt") {
+                NavigationLink {
+                    BundledSoundPickerView(resource: $resource, onChange: onChange)
+                } label: {
+                    Label("Välj från appens ljud", systemImage: "waveform")
+                }
                 Button {
                     showImporter = true
                 } label: {
@@ -93,5 +98,37 @@ struct ResourcePickerView: View {
         case .localFile: return "waveform"
         case .spotify:   return "music.note.list"
         }
+    }
+}
+
+/// A dedicated screen listing the sounds bundled with the app, so the main picker stays
+/// compact. Tapping a sound assigns it and returns. Kept on its own screen because the
+/// list can be long and would otherwise push the picker's other actions off-screen.
+private struct BundledSoundPickerView: View {
+    @Binding var resource: AudioResource?
+    var onChange: () -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        List(FileStore.bundledAudioFileNames(), id: \.self) { name in
+            Button {
+                resource = .localFile(fileName: name)
+                onChange()
+                dismiss()
+            } label: {
+                HStack {
+                    Image(systemName: "waveform")
+                    Text(name).lineLimit(1)
+                    Spacer()
+                    if resource == .localFile(fileName: name) {
+                        Image(systemName: "checkmark").foregroundStyle(.tint)
+                    }
+                }
+                .contentShape(Rectangle())
+            }
+            .foregroundStyle(.primary)
+        }
+        .navigationTitle("Appens ljud")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
