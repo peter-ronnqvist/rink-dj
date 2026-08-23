@@ -28,7 +28,7 @@ struct ControlView: View {
 
             nowPlayingBar
         }
-        .background(Color(.systemGroupedBackground))
+        .background(BrandBackground(accent: store.config.branding.accentColor))
     }
 
     private var header: some View {

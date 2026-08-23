@@ -20,7 +20,7 @@ struct TeamBranding: Codable, Hashable {
         teamName: "Flemingsbergs IK",
         logoAssetName: "TeamLogo",
         logoFileName: nil,
-        accentColorHex: "#0B7A3B" // FIK green (placeholder shade, easily changed)
+        accentColorHex: "#FFDD00" // FIK yellow (from flemingsbergsik.se)
     )
 
     var accentColor: Color { Color(hex: accentColorHex) ?? .green }

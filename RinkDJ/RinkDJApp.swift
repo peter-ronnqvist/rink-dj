@@ -25,5 +25,8 @@ struct RootView: View {
             SetupView()
                 .tabItem { Label("Inställningar", systemImage: "gearshape.fill") }
         }
+        // The app uses a branded dark look everywhere, regardless of the phone's
+        // light/dark setting — it's a game-day controller, not a general-purpose app.
+        .preferredColorScheme(.dark)
     }
 }

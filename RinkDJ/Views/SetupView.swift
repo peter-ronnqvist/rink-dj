@@ -77,6 +77,8 @@ struct SetupView: View {
                 }
             }
             .navigationTitle("Inställningar")
+            .scrollContentBackground(.hidden)
+            .background(BrandBackground(accent: store.config.branding.accentColor))
         }
     }
 
