@@ -15,12 +15,12 @@ struct ResourcePickerView: View {
     var body: some View {
         Form {
             Section("Nuvarande låt") {
-                if let resource {
+                if let current = resource {
                     HStack {
-                        Label(resource.displayName, systemImage: iconName(for: resource))
+                        Label(current.displayName, systemImage: iconName(for: current))
                             .lineLimit(1)
                         Spacer()
-                        Text(resource.sourceLabel)
+                        Text(current.sourceLabel)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
