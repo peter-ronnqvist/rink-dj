@@ -7,17 +7,19 @@ struct ControlView: View {
     @Environment(ConfigStore.self) private var store
     @Environment(PlaybackCoordinator.self) private var coordinator
 
-    private let columns = [GridItem(.adaptive(minimum: 150), spacing: 14)]
-
     var body: some View {
         VStack(spacing: 0) {
             header
 
             ScrollView {
-                LazyVGrid(columns: columns, spacing: 14) {
-                    ForEach(GameEvent.controlOrder) { event in
-                        EventButton(event: event, isActive: coordinator.lastEvent == event) {
-                            coordinator.handle(event, config: store.config)
+                VStack(spacing: 14) {
+                    ForEach(Array(GameEvent.controlRows.enumerated()), id: \.offset) { _, row in
+                        HStack(spacing: 14) {
+                            ForEach(row) { event in
+                                EventButton(event: event, isActive: coordinator.lastEvent == event) {
+                                    coordinator.handle(event, config: store.config)
+                                }
+                            }
                         }
                     }
                 }

@@ -61,6 +61,17 @@ final class LocalAudioEngine: NSObject, AudioEngine, AVAudioPlayerDelegate {
         startPlaying(url: urls[0])
     }
 
+    func playLooping(_ resource: AudioResource) {
+        guard case .localFile(let fileName) = resource,
+              let url = FileStore.resolveAudioURL(fileName: fileName) else {
+            print("LocalAudioEngine: could not resolve \(resource)")
+            return
+        }
+        queue = []           // a single looping track, not a playlist
+        // numberOfLoops = -1 loops the file seamlessly until we stop it.
+        startPlaying(url: url, numberOfLoops: -1)
+    }
+
     func stop() {
         player?.stop()
         player = nil
@@ -69,10 +80,11 @@ final class LocalAudioEngine: NSObject, AudioEngine, AVAudioPlayerDelegate {
 
     // MARK: Playback
 
-    private func startPlaying(url: URL) {
+    private func startPlaying(url: URL, numberOfLoops: Int = 0) {
         do {
             let newPlayer = try AVAudioPlayer(contentsOf: url)
             newPlayer.delegate = self
+            newPlayer.numberOfLoops = numberOfLoops
             newPlayer.prepareToPlay()
             newPlayer.play()
             player = newPlayer
