@@ -8,6 +8,10 @@ struct ResourcePickerView: View {
     @Binding var resource: AudioResource?
     var onChange: () -> Void
 
+    /// The bundled default for this event, if any. Offered as a one-tap restore so the
+    /// shipped sound can be recovered even though the importer only browses user files.
+    var defaultResource: AudioResource? = nil
+
     @Environment(ConfigStore.self) private var store
     @State private var showImporter = false
     @State private var spotifyURI = ""
@@ -31,6 +35,16 @@ struct ResourcePickerView: View {
                 } else {
                     Text("Ingen låt vald")
                         .foregroundStyle(.secondary)
+                }
+
+                if let def = defaultResource, resource != def {
+                    Button {
+                        resource = def
+                        onChange()
+                    } label: {
+                        Label("Återställ standardljud (\(def.displayName))",
+                              systemImage: "arrow.uturn.backward")
+                    }
                 }
             }
 

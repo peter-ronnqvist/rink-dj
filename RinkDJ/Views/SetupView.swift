@@ -44,13 +44,14 @@ struct SetupView: View {
                     Text("Vid varje avblåsning spelas nästa låt i spellistan. Pausen spelar paus-spellistan.")
                 }
 
-                Section("Händelselåtar") {
+                Section {
                     ForEach(GameEvent.configurableTrackEvents) { event in
                         NavigationLink {
                             ResourcePickerView(
                                 title: event.title,
                                 resource: bindingForTrack(of: event),
-                                onChange: store.save
+                                onChange: store.save,
+                                defaultResource: AppConfig.defaultTrack(for: event)
                             )
                         } label: {
                             LabeledContent(event.title) {
@@ -60,6 +61,17 @@ struct SetupView: View {
                             }
                         }
                     }
+
+                    Button {
+                        store.restoreDefaultEventSounds()
+                    } label: {
+                        Label("Återställ standardljud", systemImage: "arrow.uturn.backward")
+                    }
+                } header: {
+                    Text("Händelselåtar")
+                } footer: {
+                    Text("Återställ standardljud sätter tillbaka alla händelseljud till "
+                         + "appens original, utan att ändra spellistor eller lagprofil.")
                 }
 
                 Section("Spotify") {

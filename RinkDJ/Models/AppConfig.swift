@@ -27,6 +27,13 @@ struct AppConfig: Codable {
         eventTracks[event.rawValue] = resource
     }
 
+    /// The out-of-the-box default track bound to an event (nil if it has none). Used by
+    /// Setup to offer a "restore default sound" action, since the file importer can only
+    /// browse user files — not the sounds bundled inside the app.
+    static func defaultTrack(for event: GameEvent) -> AudioResource? {
+        demo.eventTracks[event.rawValue]
+    }
+
     // MARK: Default configuration
 
     /// Sensible out-of-the-box config using the demo sounds bundled with the app,

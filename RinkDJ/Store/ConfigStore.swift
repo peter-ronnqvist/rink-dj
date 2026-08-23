@@ -39,6 +39,14 @@ final class ConfigStore {
         save()
     }
 
+    /// Restore every event's sound to the bundled defaults, leaving the playlists and
+    /// team branding untouched. Recovers the case where a sound was cleared or changed
+    /// and the bundled default (e.g. FlempanGoal.mp3) can't be re-picked from Files.
+    func restoreDefaultEventSounds() {
+        config.eventTracks = AppConfig.demo.eventTracks
+        save()
+    }
+
     // MARK: - Importing files chosen by the user
 
     /// Copy a user-picked audio file into the app's imported-audio folder and return
