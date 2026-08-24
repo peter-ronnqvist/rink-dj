@@ -19,8 +19,11 @@ final class SpotifyEngine: AudioEngine {
         return false
     }
 
-    func playOneShot(_ resource: AudioResource) {
+    func playOneShot(_ resource: AudioResource, completion: (() -> Void)?) {
         logNotAvailable(resource)
+        // No real playback in Phase 1, so nothing ever "finishes"; fire the chain
+        // immediately to preserve Icing/Off-side → Avblåsning behaviour once wired up.
+        completion?()
     }
 
     func playPlaylist(_ resources: [AudioResource], loop: Bool) {

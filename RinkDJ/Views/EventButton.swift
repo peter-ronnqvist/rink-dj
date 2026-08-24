@@ -10,9 +10,9 @@ struct EventButton: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 6) {
+            VStack(spacing: 4) {
                 Image(systemName: event.systemImage)
-                    .font(.system(size: 32, weight: .bold))
+                    .font(.system(size: 26, weight: .bold))
                 Text(event.shortTitle)
                     .font(.headline)
                     .multilineTextAlignment(.center)
@@ -21,8 +21,8 @@ struct EventButton: View {
                     .opacity(0.9)
                     .multilineTextAlignment(.center)
             }
-            .frame(maxWidth: .infinity, minHeight: 120)
-            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, minHeight: 88)
+            .padding(.vertical, 8)
             .padding(.horizontal, 6)
             .background(event.tint.gradient)
             .foregroundStyle(.white)

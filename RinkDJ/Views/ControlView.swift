@@ -12,9 +12,9 @@ struct ControlView: View {
             header
 
             ScrollView {
-                VStack(spacing: 14) {
+                VStack(spacing: 10) {
                     ForEach(Array(GameEvent.controlRows.enumerated()), id: \.offset) { _, row in
-                        HStack(spacing: 14) {
+                        HStack(spacing: 10) {
                             ForEach(row) { event in
                                 EventButton(event: event, isActive: coordinator.lastEvent == event) {
                                     coordinator.handle(event, config: store.config)
@@ -23,7 +23,7 @@ struct ControlView: View {
                         }
                     }
                 }
-                .padding(14)
+                .padding(10)
             }
 
             nowPlayingBar

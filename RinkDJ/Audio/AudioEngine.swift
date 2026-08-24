@@ -9,8 +9,10 @@ protocol AudioEngine: AnyObject {
     func canHandle(_ resource: AudioResource) -> Bool
 
     /// Play a single resource once (used for goals, penalties, timeout, game end,
-    /// and each stepped track of the game playlist).
-    func playOneShot(_ resource: AudioResource)
+    /// and each stepped track of the game playlist). `completion` fires when the track
+    /// finishes on its own — used by Icing/Off-side to chain into Avblåsning afterwards.
+    /// It is not called if playback is interrupted by `stop()` or a new track.
+    func playOneShot(_ resource: AudioResource, completion: (() -> Void)?)
 
     /// Play a list of resources in order, optionally looping (used for intermission).
     func playPlaylist(_ resources: [AudioResource], loop: Bool)
@@ -20,4 +22,11 @@ protocol AudioEngine: AnyObject {
 
     /// Stop whatever this engine is currently playing.
     func stop()
+}
+
+extension AudioEngine {
+    /// Convenience for the common case of a one-shot with nothing to do afterwards.
+    func playOneShot(_ resource: AudioResource) {
+        playOneShot(resource, completion: nil)
+    }
 }

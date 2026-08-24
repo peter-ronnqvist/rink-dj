@@ -10,7 +10,13 @@ final class ConfigStore {
     var config: AppConfig
 
     init() {
-        self.config = Self.load() ?? .demo
+        let loaded = Self.load()
+        self.config = loaded ?? .demo
+        // A saved config from an earlier version won't contain events added later
+        // (e.g. Icing/Off-side). Backfill their bundled defaults so they aren't silent.
+        if loaded != nil {
+            backfillMissingEventDefaults()
+        }
     }
 
     // MARK: - Persistence (single JSON file in Documents)
@@ -45,6 +51,18 @@ final class ConfigStore {
     func restoreDefaultEventSounds() {
         config.eventTracks = AppConfig.demo.eventTracks
         save()
+    }
+
+    /// Give any event with no bound track its bundled default. Unlike
+    /// `restoreDefaultEventSounds`, this only fills gaps — sounds the user has already
+    /// chosen are kept. Used on launch so events added in an update start with a sound.
+    private func backfillMissingEventDefaults() {
+        var changed = false
+        for (key, resource) in AppConfig.demo.eventTracks where config.eventTracks[key] == nil {
+            config.eventTracks[key] = resource
+            changed = true
+        }
+        if changed { save() }
     }
 
     // MARK: - Importing files chosen by the user
