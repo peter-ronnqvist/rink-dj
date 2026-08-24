@@ -49,6 +49,8 @@ struct AppConfig: Codable {
                 .localFile(fileName: "demo_intermission.wav")
             ],
             eventTracks: [
+                GameEvent.icing.rawValue:          .localFile(fileName: "icing.mp3"),
+                GameEvent.offside.rawValue:        .localFile(fileName: "offside.mp3"),
                 GameEvent.hemmamal.rawValue:       .localFile(fileName: "FlempanGoal.mp3"),
                 GameEvent.bortamal.rawValue:       .localFile(fileName: "frolic.mp3"),
                 GameEvent.hemmautvisning.rawValue: .localFile(fileName: "demo_penalty.wav"),

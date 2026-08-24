@@ -8,6 +8,8 @@ import SwiftUI
 enum GameEvent: String, CaseIterable, Identifiable, Codable {
     case avblasning      // Whistle — game paused
     case tekning         // Face-off — play resumes
+    case icing           // Icing — a flavour of Avblåsning (own sound, then advances)
+    case offside         // Off-side — a flavour of Avblåsning (own sound, then advances)
     case hemmamal        // Home goal
     case bortamal        // Away goal
     case hemmautvisning  // Home penalty
@@ -24,6 +26,8 @@ enum GameEvent: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .avblasning:     return "Avblåsning"
         case .tekning:        return "Tekning"
+        case .icing:          return "Icing"
+        case .offside:        return "Off-side"
         case .hemmamal:       return "Hemmamål"
         case .bortamal:       return "Bortamål"
         case .hemmautvisning: return "Hemmautvisning"
@@ -51,6 +55,8 @@ enum GameEvent: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .avblasning:     return "Nästa låt i spellistan"
         case .tekning:        return "Stoppa musiken"
+        case .icing:          return "Icing-ljud, sedan avblåsning"
+        case .offside:        return "Offside-ljud, sedan avblåsning"
         case .hemmamal:       return "Hemmalagets mål"
         case .bortamal:       return "Bortalagets mål"
         case .hemmautvisning: return "Utvisning hemma"
@@ -67,6 +73,8 @@ enum GameEvent: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .avblasning:     return "forward.fill"
         case .tekning:        return "stop.fill"
+        case .icing:          return "arrow.uturn.left"
+        case .offside:        return "flag.slash"
         case .hemmamal:       return "house.fill"
         case .bortamal:       return "airplane"
         case .hemmautvisning: return "exclamationmark.triangle.fill"
@@ -83,6 +91,8 @@ enum GameEvent: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .avblasning:     return .blue
         case .tekning:        return .red
+        case .icing:          return .cyan
+        case .offside:        return .yellow
         case .hemmamal:       return .green
         case .bortamal:       return .orange
         case .hemmautvisning: return .purple
@@ -101,8 +111,11 @@ enum GameEvent: String, CaseIterable, Identifiable, Codable {
         case .tekning:        return .stopAll
         case .paus:           return .playIntermissionPlaylist
         case .timeout:        return .playLoopedTrack
-        case .hemmamal, .bortamal, .hemmautvisning,
-             .bortautvisning, .fulltalig, .matchslut:
+        // Goals and penalties are flavours of Avblåsning: play their sound, then advance.
+        case .icing, .offside, .hemmamal, .bortamal,
+             .hemmautvisning, .bortautvisning:
+            return .playConfiguredTrackThenAdvance
+        case .fulltalig, .matchslut:
             return .playConfiguredTrack
         }
     }
@@ -116,6 +129,7 @@ enum GameEvent: String, CaseIterable, Identifiable, Codable {
     /// the penalty-related events (both utvisningar + fulltalig) share a row of three.
     static var controlRows: [[GameEvent]] {
         [[.avblasning, .tekning],
+         [.icing, .offside],
          [.hemmamal, .bortamal],
          [.hemmautvisning, .bortautvisning, .fulltalig],
          [.timeout, .paus, .matchslut]]
@@ -129,6 +143,7 @@ enum EventAction: Equatable {
     case advanceGamePlaylist        // Avblåsning: skip to next track and play
     case stopAll                    // Tekning: stop everything
     case playConfiguredTrack        // Goals / penalties / game end: play once
+    case playConfiguredTrackThenAdvance // Icing / Off-side: play own sound, then act as Avblåsning
     case playLoopedTrack            // Timeout: loop one track until stopped (by Tekning)
     case playIntermissionPlaylist   // Paus
 
@@ -136,7 +151,7 @@ enum EventAction: Equatable {
     /// or looped), as opposed to a playlist or a fixed behaviour.
     var bindsSingleTrack: Bool {
         switch self {
-        case .playConfiguredTrack, .playLoopedTrack:
+        case .playConfiguredTrack, .playConfiguredTrackThenAdvance, .playLoopedTrack:
             return true
         case .advanceGamePlaylist, .stopAll, .playIntermissionPlaylist:
             return false

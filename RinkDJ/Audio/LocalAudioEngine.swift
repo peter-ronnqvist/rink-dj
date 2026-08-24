@@ -14,6 +14,10 @@ final class LocalAudioEngine: NSObject, AudioEngine, AVAudioPlayerDelegate {
     private var queueIndex = 0
     private var loopQueue = false
 
+    /// Called when the current one-shot finishes on its own (not on stop/replace).
+    /// Used to chain Icing/Off-side into an Avblåsning once their sound has played.
+    private var oneShotCompletion: (() -> Void)?
+
     override init() {
         super.init()
         configureSession()
@@ -39,13 +43,14 @@ final class LocalAudioEngine: NSObject, AudioEngine, AVAudioPlayerDelegate {
         return false
     }
 
-    func playOneShot(_ resource: AudioResource) {
+    func playOneShot(_ resource: AudioResource, completion: (() -> Void)?) {
         guard case .localFile(let fileName) = resource,
               let url = FileStore.resolveAudioURL(fileName: fileName) else {
             print("LocalAudioEngine: could not resolve \(resource)")
             return
         }
         queue = []           // a one-shot cancels any running playlist
+        oneShotCompletion = completion
         startPlaying(url: url)
     }
 
@@ -55,6 +60,7 @@ final class LocalAudioEngine: NSObject, AudioEngine, AVAudioPlayerDelegate {
             return FileStore.resolveAudioURL(fileName: fileName)
         }
         guard !urls.isEmpty else { stop(); return }
+        oneShotCompletion = nil     // playlists don't chain
         queue = urls
         queueIndex = 0
         loopQueue = loop
@@ -68,6 +74,7 @@ final class LocalAudioEngine: NSObject, AudioEngine, AVAudioPlayerDelegate {
             return
         }
         queue = []           // a single looping track, not a playlist
+        oneShotCompletion = nil     // a loop never finishes on its own
         // numberOfLoops = -1 loops the file seamlessly until we stop it.
         startPlaying(url: url, numberOfLoops: -1)
     }
@@ -76,6 +83,7 @@ final class LocalAudioEngine: NSObject, AudioEngine, AVAudioPlayerDelegate {
         player?.stop()
         player = nil
         queue = []
+        oneShotCompletion = nil     // interrupted, so don't chain
     }
 
     // MARK: Playback
@@ -96,7 +104,14 @@ final class LocalAudioEngine: NSObject, AudioEngine, AVAudioPlayerDelegate {
     // MARK: AVAudioPlayerDelegate — auto-advance a running playlist
 
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        guard !queue.isEmpty else { return }   // one-shot finished; nothing to do
+        guard !queue.isEmpty else {
+            // A one-shot finished. If something was chained to it (Icing/Off-side →
+            // Avblåsning), run it now. Clear first so it can't fire twice.
+            let completion = oneShotCompletion
+            oneShotCompletion = nil
+            completion?()
+            return
+        }
         queueIndex += 1
         if queueIndex >= queue.count {
             guard loopQueue else { queue = []; return }

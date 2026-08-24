@@ -47,6 +47,18 @@ final class PlaybackCoordinator {
             playOneShot(resource)
             nowPlaying = "\(event.title): \(resource.displayName)"
 
+        case .playConfiguredTrackThenAdvance:
+            guard let resource = config.track(for: event) else {
+                // No sound bound: still behave as an Avblåsning.
+                handle(.avblasning, config: config)
+                return
+            }
+            // Play the event's own sound, then act as Avblåsning once it finishes.
+            playOneShot(resource) { [weak self] in
+                self?.handle(.avblasning, config: config)
+            }
+            nowPlaying = "\(event.title): \(resource.displayName)"
+
         case .playLoopedTrack:
             guard let resource = config.track(for: event) else {
                 nowPlaying = "Ingen låt vald för \(event.title)"
@@ -85,9 +97,9 @@ final class PlaybackCoordinator {
         }
     }
 
-    private func playOneShot(_ resource: AudioResource) {
+    private func playOneShot(_ resource: AudioResource, completion: (() -> Void)? = nil) {
         stop()
-        engine(for: resource)?.playOneShot(resource)
+        engine(for: resource)?.playOneShot(resource, completion: completion)
     }
 
     private func playLooping(_ resource: AudioResource) {
