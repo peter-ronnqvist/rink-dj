@@ -16,6 +16,7 @@ struct SetupView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
+                    modeSection(store: store)
                     playlistSection
                     eventSection(store: store)
                     spotifySection
@@ -30,6 +31,17 @@ struct SetupView: View {
     }
 
     // MARK: Sections
+
+    private func modeSection(store: ConfigStore) -> some View {
+        GroupBox("Läge") {
+            Toggle("Avancerad", isOn: Binding(
+                get: { store.config.isAdvanced },
+                set: { store.config.isAdvanced = $0; store.save() }
+            ))
+            footer("I avancerat läge visas alla knappar på matchskärmen. Annars visas "
+                   + "endast Avblåsning, Tekning, Hemmamål, Bortamål, Paus och Matchslut.")
+        }
+    }
 
     private var playlistSection: some View {
         GroupBox("Spellistor") {

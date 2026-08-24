@@ -71,7 +71,7 @@ enum GameEvent: String, CaseIterable, Identifiable, Codable {
     /// SF Symbol name for the button icon.
     var systemImage: String {
         switch self {
-        case .avblasning:     return "forward.fill"
+        case .avblasning:     return "play.fill"
         case .tekning:        return "stop.fill"
         case .icing:          return "arrow.uturn.left"
         case .offside:        return "flag.slash"
@@ -89,7 +89,7 @@ enum GameEvent: String, CaseIterable, Identifiable, Codable {
     /// Colour tint for the button, so officials can find them fast under pressure.
     var tint: Color {
         switch self {
-        case .avblasning:     return .blue
+        case .avblasning:     return Color(red: 0.0, green: 0.5, blue: 0.13) // traffic-light green
         case .tekning:        return .red
         case .icing:          return .cyan
         case .offside:        return .yellow
@@ -125,6 +125,17 @@ enum GameEvent: String, CaseIterable, Identifiable, Codable {
         allCases.filter { $0.action.bindsSingleTrack }
     }
 
+    /// Whether this event is shown in the simplified (non-advanced) Match screen.
+    /// The rest are only visible when the user turns on "Avancerad" in Setup.
+    var isBasic: Bool {
+        switch self {
+        case .avblasning, .tekning, .hemmamal, .bortamal, .paus, .matchslut:
+            return true
+        default:
+            return false
+        }
+    }
+
     /// Display layout for the Control screen, grouped into rows. Most rows are pairs;
     /// the penalty-related events (both utvisningar + fulltalig) share a row of three.
     static var controlRows: [[GameEvent]] {
@@ -133,6 +144,16 @@ enum GameEvent: String, CaseIterable, Identifiable, Codable {
          [.hemmamal, .bortamal],
          [.hemmautvisning, .bortautvisning, .fulltalig],
          [.timeout, .paus, .matchslut]]
+    }
+
+    /// Row layout for the Match screen. In advanced mode this is the full `controlRows`;
+    /// otherwise only the basic events are kept, dropping any row left empty.
+    static func controlRows(advanced: Bool) -> [[GameEvent]] {
+        guard !advanced else { return controlRows }
+        return controlRows.compactMap { row in
+            let basics = row.filter(\.isBasic)
+            return basics.isEmpty ? nil : basics
+        }
     }
 }
 

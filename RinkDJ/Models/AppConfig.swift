@@ -17,7 +17,18 @@ struct AppConfig: Codable {
 
     var branding: TeamBranding
 
+    /// When off (the default), the Match screen shows only the core buttons; when on,
+    /// every event button is shown. Optional so configs saved before this flag existed
+    /// still decode — a missing value is treated as "off" via ``isAdvanced``.
+    var advancedMode: Bool? = nil
+
     // MARK: Convenience accessors
+
+    /// Whether the advanced (all-buttons) Match layout is active.
+    var isAdvanced: Bool {
+        get { advancedMode ?? false }
+        set { advancedMode = newValue }
+    }
 
     func track(for event: GameEvent) -> AudioResource? {
         eventTracks[event.rawValue]
@@ -59,7 +70,8 @@ struct AppConfig: Codable {
                 GameEvent.timeout.rawValue:        .localFile(fileName: "cricket.mp3"),
                 GameEvent.matchslut.rawValue:      .localFile(fileName: "demo_matchslut.wav")
             ],
-            branding: .flemingsbergsIK
+            branding: .flemingsbergsIK,
+            advancedMode: false
         )
     }
 }

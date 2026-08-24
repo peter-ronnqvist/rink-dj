@@ -13,7 +13,7 @@ struct ControlView: View {
 
             ScrollView {
                 VStack(spacing: 10) {
-                    ForEach(Array(GameEvent.controlRows.enumerated()), id: \.offset) { _, row in
+                    ForEach(Array(GameEvent.controlRows(advanced: store.config.isAdvanced).enumerated()), id: \.offset) { _, row in
                         HStack(spacing: 10) {
                             ForEach(row) { event in
                                 EventButton(event: event, isActive: coordinator.lastEvent == event) {
