@@ -39,7 +39,7 @@ struct ControlView: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text(store.config.branding.teamName)
                     .font(.headline)
-                Text("Matchljud")
+                Text("RinkDJ")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
