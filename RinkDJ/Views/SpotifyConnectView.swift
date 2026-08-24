@@ -57,7 +57,6 @@ struct SpotifyConnectView: View {
             Section {
                 Label("Spotify Premium-konto", systemImage: "checkmark.seal")
                 Label("Spotify-appen installerad", systemImage: "iphone")
-                Label("En fysisk enhet (fungerar inte i simulatorn)", systemImage: "exclamationmark.triangle")
             } header: {
                 Text("Krav")
             } footer: {
