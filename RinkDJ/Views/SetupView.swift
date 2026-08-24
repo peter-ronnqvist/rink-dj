@@ -9,6 +9,7 @@ import SwiftUI
 /// plain `ScrollView` scrolls correctly and insets above the floating bar.
 struct SetupView: View {
     @Environment(ConfigStore.self) private var store
+    @Environment(SpotifyEngine.self) private var spotify
 
     var body: some View {
         @Bindable var store = store
@@ -97,12 +98,19 @@ struct SetupView: View {
     }
 
     private var spotifySection: some View {
-        GroupBox("Spotify") {
+        GroupBox {
             NavigationLink {
                 SpotifyConnectView()
             } label: {
-                row { labeled("Anslutning", "Fas 2") }
+                row { labeled("Anslutning", spotify.isConnected ? "Ansluten" : "Inte ansluten") }
             }
+        } label: {
+            // Official Spotify logo (unmodified) instead of a plain "Spotify" text label.
+            Image("SpotifyFullLogo")
+                .resizable()
+                .scaledToFit()
+                .frame(height: 21)
+                .accessibilityLabel("Spotify")
         }
     }
 

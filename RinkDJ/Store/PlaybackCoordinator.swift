@@ -11,6 +11,10 @@ final class PlaybackCoordinator {
     /// Text shown in the now-playing bar on the Control screen.
     private(set) var nowPlaying: String = "Inget spelas"
 
+    /// The resource currently playing, so the now-playing bar can attribute the source
+    /// (e.g. show the Spotify logo for `.spotify` tracks). `nil` when nothing is playing.
+    private(set) var nowPlayingResource: AudioResource?
+
     /// Which event was triggered last (used to highlight the button briefly).
     private(set) var lastEvent: GameEvent?
 
@@ -71,6 +75,7 @@ final class PlaybackCoordinator {
 
     func stop() {
         engines.forEach { $0.stop() }
+        nowPlayingResource = nil
     }
 
     // MARK: - Helpers
@@ -93,6 +98,7 @@ final class PlaybackCoordinator {
         // Route the whole playlist to the engine that handles its first track.
         if let engine = engine(for: playlist[0]) {
             engine.playPlaylist(playlist, loop: loop)
+            nowPlayingResource = playlist[0]
             nowPlaying = "\(label): \(playlist[0].displayName)"
         }
     }
@@ -100,11 +106,13 @@ final class PlaybackCoordinator {
     private func playOneShot(_ resource: AudioResource, completion: (() -> Void)? = nil) {
         stop()
         engine(for: resource)?.playOneShot(resource, completion: completion)
+        nowPlayingResource = resource
     }
 
     private func playLooping(_ resource: AudioResource) {
         stop()
         engine(for: resource)?.playLooping(resource)
+        nowPlayingResource = resource
     }
 
     private func engine(for resource: AudioResource) -> AudioEngine? {
