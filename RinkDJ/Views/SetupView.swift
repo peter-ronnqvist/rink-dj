@@ -98,12 +98,19 @@ struct SetupView: View {
     }
 
     private var spotifySection: some View {
-        GroupBox("Spotify") {
+        GroupBox {
             NavigationLink {
                 SpotifyConnectView()
             } label: {
                 row { labeled("Anslutning", spotify.isConnected ? "Ansluten" : "Inte ansluten") }
             }
+        } label: {
+            // Official Spotify logo (unmodified) instead of a plain "Spotify" text label.
+            Image("SpotifyFullLogo")
+                .resizable()
+                .scaledToFit()
+                .frame(height: 21)
+                .accessibilityLabel("Spotify")
         }
     }
 

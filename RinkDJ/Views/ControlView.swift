@@ -6,6 +6,8 @@ import UIKit
 struct ControlView: View {
     @Environment(ConfigStore.self) private var store
     @Environment(PlaybackCoordinator.self) private var coordinator
+    @Environment(SpotifyEngine.self) private var spotify
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         VStack(spacing: 0) {
@@ -50,9 +52,8 @@ struct ControlView: View {
 
     private var nowPlayingBar: some View {
         HStack(spacing: 12) {
-            Image(systemName: "music.note")
-                .foregroundStyle(store.config.branding.accentColor)
-            Text(coordinator.nowPlaying)
+            nowPlayingSourceMark
+            Text(nowPlayingText)
                 .font(.subheadline)
                 .lineLimit(1)
             Spacer()
@@ -67,5 +68,39 @@ struct ControlView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .background(.bar)
+    }
+
+    /// Text for the now-playing bar. For Spotify tracks we prefer the real "Title – Artist"
+    /// metadata reported by the SDK (populated on-device via the player-state callback),
+    /// falling back to the coordinator's contextual label (e.g. before metadata arrives,
+    /// or in the Simulator where Spotify can't play).
+    private var nowPlayingText: String {
+        if case .spotify = coordinator.nowPlayingResource, let metadata = spotify.nowPlaying {
+            return metadata
+        }
+        return coordinator.nowPlaying
+    }
+
+    /// The leading mark in the now-playing bar. For Spotify tracks this is the official
+    /// full Spotify logo (required brand attribution for the metadata shown), and tapping
+    /// it opens the track in the Spotify app (required link-back). Local files keep a
+    /// generic note icon.
+    @ViewBuilder
+    private var nowPlayingSourceMark: some View {
+        if case .spotify(let uri) = coordinator.nowPlayingResource {
+            Button {
+                if let url = URL(string: uri) { openURL(url) }
+            } label: {
+                Image("SpotifyFullLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(height: 20)
+                    .accessibilityLabel("Spela i Spotify")
+            }
+            .buttonStyle(.plain)
+        } else {
+            Image(systemName: "music.note")
+                .foregroundStyle(store.config.branding.accentColor)
+        }
     }
 }

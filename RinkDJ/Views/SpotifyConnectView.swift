@@ -8,6 +8,19 @@ struct SpotifyConnectView: View {
 
     var body: some View {
         Form {
+            Section {
+                // Official Spotify logo (unmodified) — required brand attribution
+                // wherever Spotify metadata/playback is shown.
+                Image("SpotifyFullLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(height: 36)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 8)
+                    .accessibilityLabel("Spotify")
+            }
+            .listRowBackground(Color.clear)
+
             Section("Status") {
                 if spotify.isConnected {
                     Label(spotify.statusMessage, systemImage: "checkmark.circle.fill")

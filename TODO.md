@@ -32,8 +32,8 @@ Status: **Phase 1 is built and ready.** These are the things *you* need to do.
 - [x] `SpotifyEngine` implemented with `SPTAppRemote` (App Remote flow, no backend/secret).
 - [x] Info.plist wired: URL scheme `nu.ronnqvist.rinkdj` + `LSApplicationQueriesSchemes` = spotify.
 - [x] Builds green for the Simulator (Spotify features are inert there by design).
-- [ ] **Rotate the Spotify client secret** in the dashboard — it was shared in chat and the
-      app does NOT need it (App Remote flow uses only the Client ID + redirect URI).
+- [x] **Rotated the Spotify client secret** in the dashboard (2026-08-24). The app does
+      NOT use it anyway — App Remote flow uses only the Client ID + redirect URI.
 - [ ] Deploy to a **physical iPad/iPhone** from Xcode (set your Signing team).
 - [ ] With the **Spotify app installed + logged into Premium**, open the Spotify tab →
       **Anslut Spotify** → approve → then test Spotify-bound events on the Match screen.
