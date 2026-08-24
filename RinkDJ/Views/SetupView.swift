@@ -16,7 +16,6 @@ struct SetupView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
-                    teamSection
                     playlistSection
                     eventSection(store: store)
                     spotifySection
@@ -32,19 +31,6 @@ struct SetupView: View {
 
     // MARK: Sections
 
-    private var teamSection: some View {
-        GroupBox("Lag") {
-            NavigationLink {
-                TeamBrandingView()
-            } label: {
-                row {
-                    TeamLogoView(branding: store.config.branding, size: 32)
-                    Text(store.config.branding.teamName)
-                }
-            }
-        }
-    }
-
     private var playlistSection: some View {
         GroupBox("Spellistor") {
             NavigationLink {
@@ -52,7 +38,7 @@ struct SetupView: View {
                                    resources: playlistBinding(\.gamePlaylist),
                                    onChange: store.save)
             } label: {
-                row { labeled("Spellista", "\(store.config.gamePlaylist.count) låtar") }
+                row { labeled("Match-spellista", "\(store.config.gamePlaylist.count) låtar") }
             }
             Divider()
             NavigationLink {
