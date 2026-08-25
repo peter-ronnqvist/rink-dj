@@ -42,25 +42,33 @@ struct SpeakerView: View {
     }
 }
 
-/// A grid tile for one signal: the photo (its rule number + name are printed in the
-/// image) on a white rounded card.
+/// A grid tile for one signal: the photo on a white rounded card, with the rule number
+/// and name shown as a caption below (the names are no longer printed in the images).
 private struct SignalCard: View {
     let signal: RefereeSignal
 
     var body: some View {
-        Image(signal.imageNames[0])
-            .resizable()
-            .scaledToFit()
-            .frame(maxWidth: .infinity)
-            .background(Color.white)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .overlay(alignment: .topTrailing) {
-                if signal.isAnimated {
-                    Image(systemName: "play.circle.fill")
-                        .foregroundStyle(.white, .black.opacity(0.5))
-                        .padding(6)
+        VStack(spacing: 4) {
+            Image(signal.imageNames[0])
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: .infinity)
+                .background(Color.white)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay(alignment: .topTrailing) {
+                    if signal.isAnimated {
+                        Image(systemName: "play.circle.fill")
+                            .foregroundStyle(.white, .black.opacity(0.5))
+                            .padding(6)
+                    }
                 }
-            }
-            .accessibilityLabel("\(signal.number) \(signal.name)")
+            Text("\(signal.number) \(signal.name)")
+                .font(.caption)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .frame(maxWidth: .infinity)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(signal.number) \(signal.name)")
     }
 }
