@@ -50,5 +50,10 @@ extension SpeakerTip {
                     + "nummer 2, Nils Ghandi. Assist spelare nummer 5, Ove Sundberg."
             ]
         ),
+        SpeakerTip(
+            "Efter slutsignal",
+            body: "Tacka spelare, ledare, publik och domare för en god match och önska "
+                + "dem en fortsatt trevlig dag/kväll."
+        ),
     ]
 }
