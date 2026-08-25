@@ -6,14 +6,17 @@ import Foundation
 struct SpeakerTip: Identifiable {
     let id: String            // title, used as identity
     let title: String
-    let body: String
+    let body: String          // may be empty when the tip is just bullets
+    let bullets: [String]     // bulleted instructions
     let format: String?       // phrasing template, e.g. "Vid [tid] ..."
     let examples: [String]
 
-    init(_ title: String, body: String, format: String? = nil, examples: [String] = []) {
+    init(_ title: String, body: String = "", bullets: [String] = [],
+         format: String? = nil, examples: [String] = []) {
         self.id = title
         self.title = title
         self.body = body
+        self.bullets = bullets
         self.format = format
         self.examples = examples
     }
@@ -23,9 +26,17 @@ extension SpeakerTip {
     static let all: [SpeakerTip] = [
         SpeakerTip(
             "Före match",
-            body: "Under uppvärmningen, ca 5 minuter innan nedsläpp: presentera matchen och "
-                + "hälsa publik och lag välkomna. Presentera därefter laguppställningarna – "
-                + "börja med bortalaget."
+            body: "Under uppvärmningen, ca 5 minuter innan nedsläpp:",
+            bullets: [
+                "Presentera matchen och hälsa publik och gästande lag välkomna.",
+                "Presentera matchens huvuddomare och linjedomare med namn.",
+                "Presentera laguppställningarna – börja med bortalaget.",
+            ]
+        ),
+        SpeakerTip(
+            "Under match",
+            body: "Informera om när det återstår 1 minut av perioden (period 1 och 2) "
+                + "respektive 2 minuter (period 3)."
         ),
         SpeakerTip(
             "Vid utvisning",
@@ -35,6 +46,13 @@ extension SpeakerTip {
             examples: [
                 "Vid 7:13 i andra perioden utvisas Flemingsbergs nummer 7, 2 minuter för tripping."
             ]
+        ),
+        SpeakerTip(
+            "Vid fulltalighet",
+            body: "Då en utvisad spelare lämnar utvisningsbåset annonserar du att laget "
+                + "är fulltaligt.",
+            format: "[lag] fulltaligt.",
+            examples: ["Flemingsberg fulltaligt."]
         ),
         SpeakerTip(
             "Vid mål",
@@ -51,9 +69,16 @@ extension SpeakerTip {
             ]
         ),
         SpeakerTip(
+            "Efter period",
+            body: "Meddela resultat och skottstatistik i den aktuella perioden."
+        ),
+        SpeakerTip(
             "Efter slutsignal",
-            body: "Tacka spelare, ledare, publik och domare för en god match och önska "
-                + "dem en fortsatt trevlig dag/kväll."
+            bullets: [
+                "Meddela resultat och skottstatistik i den sista perioden och totalt.",
+                "Tacka lagen, domarna och publiken för matchen samt hälsa välkommen åter "
+                    + "till nästa match.",
+            ]
         ),
     ]
 }

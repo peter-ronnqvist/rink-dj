@@ -58,9 +58,21 @@ private struct SpeakerTipView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(tip.title)
                 .font(.headline)
-            Text(tip.body)
+
+            if !tip.body.isEmpty {
+                Text(tip.body)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            ForEach(tip.bullets, id: \.self) { bullet in
+                HStack(alignment: .top, spacing: 6) {
+                    Text("•")
+                    Text(bullet)
+                }
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
+            }
 
             if let format = tip.format {
                 Text(format)
