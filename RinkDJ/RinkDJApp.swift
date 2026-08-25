@@ -43,6 +43,8 @@ struct RootView: View {
         TabView {
             ControlView()
                 .tabItem { Label("Match", systemImage: "sportscourt.fill") }
+            SpeakerView()
+                .tabItem { Label("Speaker", systemImage: "megaphone.fill") }
             SetupView()
                 .tabItem { Label("Inställningar", systemImage: "gearshape.fill") }
         }

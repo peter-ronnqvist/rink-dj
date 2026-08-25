@@ -38,6 +38,14 @@ Status: **Phase 1 is built and ready.** These are the things *you* need to do.
 - [ ] With the **Spotify app installed + logged into Premium**, open the Spotify tab →
       **Anslut Spotify** → approve → then test Spotify-bound events on the Match screen.
 
+## 5. Speaker tab — referee signals (Domartecken)
+- [x] New **Speaker** tab: referee hand signals grouped by category, tap for a larger
+      view; two-part signs (29.8/29.14/29.15) cross-fade between their two frames.
+- [ ] **Image rights:** the signal photos are extracted from `mskold.se/.../Domartecken.pdf`
+      (third-party copyright, used as-is for now with a visible source credit). **Secure
+      permission or replace with official/own imagery before any public / non-club
+      distribution** (App Store / TestFlight to outsiders).
+
 ---
 Notes: Apple ID only needed to run on a real phone (Simulator needs none). Keep ~40 GB free.
 Full details in `README.md`.
