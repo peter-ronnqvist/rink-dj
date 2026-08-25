@@ -1,38 +1,45 @@
 import SwiftUI
 
-/// The Speaker tab: reference material for the arena announcer ("speaker"). For now it
-/// holds a single section — the referee hand signals (domartecken) — grouped by category.
-/// Built on `ScrollView` + `GroupBox` over `BrandBackground` (like `SetupView`) so it
-/// scrolls correctly under the iOS 26 floating `TabView`.
+/// The Speaker tab: reference material for the arena announcer ("speaker") — instruction
+/// tips, plus a link through to the referee hand-signal (domartecken) reference. Built on
+/// `ScrollView` + `GroupBox` over `BrandBackground` (like `SetupView`) so it scrolls
+/// correctly under the iOS 26 floating `TabView`.
 struct SpeakerView: View {
     @Environment(ConfigStore.self) private var store
-
-    private let columns = [GridItem(.adaptive(minimum: 150), spacing: 12)]
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
-                    ForEach(RefereeSignal.Category.allCases) { category in
-                        GroupBox(category.rawValue) {
-                            LazyVGrid(columns: columns, spacing: 12) {
-                                ForEach(RefereeSignal.signals(in: category)) { signal in
-                                    NavigationLink {
-                                        RefereeSignalDetailView(signal: signal)
-                                    } label: {
-                                        SignalCard(signal: signal)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
+                    GroupBox {
+                        NavigationLink {
+                            RefereeSignalsView()
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: "hand.raised.fill")
+                                    .foregroundStyle(store.config.branding.accentColor)
+                                Text("Domartecken")
+                                    .font(.headline)
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.bold())
+                                    .foregroundStyle(.tertiary)
                             }
-                            .padding(.top, 4)
+                            .contentShape(Rectangle())
+                            .foregroundStyle(.primary)
+                            .padding(.vertical, 4)
                         }
+                        .buttonStyle(.plain)
                     }
 
-                    Text("Domartecken: mskold.se")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    GroupBox("Tips till speakern") {
+                        VStack(alignment: .leading, spacing: 18) {
+                            ForEach(SpeakerTip.all) { tip in
+                                SpeakerTipView(tip: tip)
+                            }
+                        }
+                        .padding(.top, 4)
+                    }
                 }
                 .padding()
             }
@@ -42,33 +49,56 @@ struct SpeakerView: View {
     }
 }
 
-/// A grid tile for one signal: the photo on a white rounded card, with the rule number
-/// and name shown as a caption below (the names are no longer printed in the images).
-private struct SignalCard: View {
-    let signal: RefereeSignal
+/// One announcer tip: title, instruction, and (for announcements) a phrasing template
+/// and worked examples.
+private struct SpeakerTipView: View {
+    let tip: SpeakerTip
 
     var body: some View {
-        VStack(spacing: 4) {
-            Image(signal.imageNames[0])
-                .resizable()
-                .scaledToFit()
-                .frame(maxWidth: .infinity)
-                .background(Color.white)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-                .overlay(alignment: .topTrailing) {
-                    if signal.isAnimated {
-                        Image(systemName: "play.circle.fill")
-                            .foregroundStyle(.white, .black.opacity(0.5))
-                            .padding(6)
+        VStack(alignment: .leading, spacing: 6) {
+            Text(tip.title)
+                .font(.headline)
+
+            if !tip.body.isEmpty {
+                Text(tip.body)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            ForEach(tip.bullets, id: \.self) { bullet in
+                HStack(alignment: .top, spacing: 6) {
+                    Text("•")
+                    Text(bullet)
+                }
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            }
+
+            if let format = tip.format {
+                Text(format)
+                    .font(.callout)
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
+            }
+
+            if !tip.examples.isEmpty {
+                Text("Exempel")
+                    .font(.caption.bold())
+                    .foregroundStyle(.tertiary)
+                    .padding(.top, 2)
+                ForEach(tip.examples, id: \.self) { example in
+                    HStack(alignment: .top, spacing: 6) {
+                        Image(systemName: "quote.opening")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                        Text(example)
+                            .font(.callout)
+                            .italic()
                     }
                 }
-            Text("\(signal.number) \(signal.name)")
-                .font(.caption)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-                .frame(maxWidth: .infinity)
+            }
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(signal.number) \(signal.name)")
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
