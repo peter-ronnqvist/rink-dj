@@ -6,6 +6,7 @@ import SwiftUI
 @main
 struct RinkDJApp: App {
     @State private var store = ConfigStore()
+    @State private var shots = ShotStore()
     @State private var spotify: SpotifyEngine
     @State private var coordinator: PlaybackCoordinator
     @Environment(\.scenePhase) private var scenePhase
@@ -23,6 +24,7 @@ struct RinkDJApp: App {
         WindowGroup {
             RootView()
                 .environment(store)
+                .environment(shots)
                 .environment(coordinator)
                 .environment(spotify)
                 // OAuth redirect from the Spotify app comes back here.
@@ -45,6 +47,8 @@ struct RootView: View {
                 .tabItem { Label("Match", systemImage: "sportscourt.fill") }
             SpeakerView()
                 .tabItem { Label("Speaker", systemImage: "megaphone.fill") }
+            ShotsView()
+                .tabItem { Label("Skott", systemImage: "scope") }
             SetupView()
                 .tabItem { Label("Inställningar", systemImage: "gearshape.fill") }
         }
