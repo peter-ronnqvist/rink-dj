@@ -71,8 +71,10 @@ enum GameEvent: String, CaseIterable, Identifiable, Codable {
     /// SF Symbol name for the button icon.
     var systemImage: String {
         switch self {
-        case .avblasning:     return "play.fill"
-        case .tekning:        return "stop.fill"
+        // Icon reflects what happens in the game (opposite of the music): Avblåsning
+        // stops play, Tekning resumes it.
+        case .avblasning:     return "stop.fill"
+        case .tekning:        return "play.fill"
         case .icing:          return "arrow.uturn.left"
         case .offside:        return "flag.slash"
         case .hemmamal:       return "house.fill"
@@ -89,8 +91,10 @@ enum GameEvent: String, CaseIterable, Identifiable, Codable {
     /// Colour tint for the button, so officials can find them fast under pressure.
     var tint: Color {
         switch self {
-        case .avblasning:     return Color(red: 0.0, green: 0.5, blue: 0.13) // traffic-light green
-        case .tekning:        return .red
+        // Colour reflects what happens in the game (opposite of the music): Avblåsning
+        // stops play (red), Tekning resumes it (green).
+        case .avblasning:     return .red
+        case .tekning:        return Color(red: 0.0, green: 0.5, blue: 0.13) // traffic-light green
         case .icing:          return .cyan
         case .offside:        return .yellow
         case .hemmamal:       return .green
