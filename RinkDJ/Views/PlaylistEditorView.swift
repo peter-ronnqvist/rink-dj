@@ -14,7 +14,7 @@ struct PlaylistEditorView: View {
     @Environment(ConfigStore.self) private var store
     @State private var showImporter = false
     @State private var showPlaylistPicker = false
-    @State private var spotifyURI = ""
+    @State private var showClearConfirm = false
 
     var body: some View {
         Form {
@@ -43,7 +43,15 @@ struct PlaylistEditorView: View {
                     }
                 }
             } header: {
-                Text("Låtar (\(resources.count))")
+                HStack {
+                    Text("Låtar (\(resources.count))")
+                    Spacer()
+                    if !resources.isEmpty {
+                        Button("Rensa", role: .destructive) { showClearConfirm = true }
+                            .textCase(nil)
+                            .font(.caption.bold())
+                    }
+                }
             } footer: {
                 Text("Dra för att ändra ordning. Svep för att ta bort.")
             }
@@ -61,24 +69,20 @@ struct PlaylistEditorView: View {
                     Label("Välj Spotify-spellista…", systemImage: "music.note.list")
                 }
             }
-
-            Section {
-                HStack {
-                    TextField("Klistra in Spotify-länk eller URI", text: $spotifyURI)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    Button("Lägg till") { addPastedSpotifyURI() }
-                        .disabled(SpotifyURI.normalize(spotifyURI) == nil)
-                }
-            } header: {
-                Text("Eller klistra in en länk")
-            } footer: {
-                Text("Stödjer både delningslänkar (open.spotify.com) och spotify:-URI:er.")
-            }
         }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { EditButton() }
+        .confirmationDialog("Rensa spellistan?", isPresented: $showClearConfirm,
+                            titleVisibility: .visible) {
+            Button("Rensa alla låtar", role: .destructive) {
+                resources.removeAll()
+                onChange()
+            }
+            Button("Avbryt", role: .cancel) {}
+        } message: {
+            Text("Alla låtar i spellistan tas bort.")
+        }
         .sheet(isPresented: $showPlaylistPicker) {
             SpotifyPlaylistPickerView(mode: spotifyMode) { added in
                 resources.append(contentsOf: added)
@@ -97,15 +101,6 @@ struct PlaylistEditorView: View {
                 onChange()
             }
         }
-    }
-
-    /// Normalize the pasted text to a canonical `spotify:` URI before storing it, so a
-    /// pasted open.spotify.com share link becomes something the SDK can actually play.
-    private func addPastedSpotifyURI() {
-        guard let uri = SpotifyURI.normalize(spotifyURI) else { return }
-        resources.append(.spotify(uri: uri))
-        onChange()
-        spotifyURI = ""
     }
 
     private func iconName(for resource: AudioResource) -> String {
