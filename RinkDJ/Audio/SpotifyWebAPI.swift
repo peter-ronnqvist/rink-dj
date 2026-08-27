@@ -63,7 +63,6 @@ struct SpotifyWebAPI {
     func fetchPlaylistTracks(playlistID: String, token: String) async throws -> [SpotifyTrack] {
         var url: URL? = base.appending(path: "playlists/\(playlistID)/tracks").appending(queryItems: [
             URLQueryItem(name: "limit", value: "100"),
-            URLQueryItem(name: "market", value: "from_token"),
             // Trim the payload to just the fields we map below.
             URLQueryItem(name: "fields", value: "next,items(track(uri,name,is_playable,artists(name)))")
         ])
