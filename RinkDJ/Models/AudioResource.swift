@@ -13,13 +13,17 @@ enum AudioResource: Codable, Hashable, Identifiable {
     /// app bundle (shipped demo sounds).
     case localFile(fileName: String)
 
-    /// A Spotify track or playlist URI, e.g. "spotify:track:...". Wired up in Phase 2.
-    case spotify(uri: String)
+    /// A Spotify track or playlist URI, e.g. "spotify:track:...". `name` is an optional
+    /// human-friendly label ("Title – Artist" for tracks, the playlist name for playlists)
+    /// captured when the item is picked from Spotify, so lists don't show raw URIs. It is
+    /// optional so older saved configs (which stored only a URI) still decode — the
+    /// synthesized decoder fills it with `nil`.
+    case spotify(uri: String, name: String? = nil)
 
     var id: String {
         switch self {
         case .localFile(let name): return "local:\(name)"
-        case .spotify(let uri):    return "spotify:\(uri)"
+        case .spotify(let uri, _): return "spotify:\(uri)"
         }
     }
 
@@ -28,8 +32,8 @@ enum AudioResource: Codable, Hashable, Identifiable {
         switch self {
         case .localFile(let name):
             return (name as NSString).lastPathComponent
-        case .spotify(let uri):
-            return uri
+        case .spotify(let uri, let name):
+            return name ?? uri
         }
     }
 

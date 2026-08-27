@@ -7,9 +7,13 @@ struct PlaylistEditorView: View {
     let title: String
     @Binding var resources: [AudioResource]
     var onChange: () -> Void
+    /// How a picked Spotify playlist is added: expanded to tracks for the stepped
+    /// Match-spellista, kept whole (looping) for the Paus-spellista.
+    var spotifyMode: SpotifyPickMode
 
     @Environment(ConfigStore.self) private var store
     @State private var showImporter = false
+    @State private var showPlaylistPicker = false
     @State private var spotifyURI = ""
 
     var body: some View {
@@ -51,24 +55,36 @@ struct PlaylistEditorView: View {
                     Label("Importera MP3-filer…", systemImage: "square.and.arrow.down")
                 }
 
+                Button {
+                    showPlaylistPicker = true
+                } label: {
+                    Label("Välj Spotify-spellista…", systemImage: "music.note.list")
+                }
+            }
+
+            Section {
                 HStack {
-                    TextField("spotify:playlist:… eller :track:", text: $spotifyURI)
+                    TextField("Klistra in Spotify-länk eller URI", text: $spotifyURI)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
-                    Button("Lägg till") {
-                        let trimmed = spotifyURI.trimmingCharacters(in: .whitespaces)
-                        guard !trimmed.isEmpty else { return }
-                        resources.append(.spotify(uri: trimmed))
-                        onChange()
-                        spotifyURI = ""
-                    }
-                    .disabled(spotifyURI.trimmingCharacters(in: .whitespaces).isEmpty)
+                    Button("Lägg till") { addPastedSpotifyURI() }
+                        .disabled(SpotifyURI.normalize(spotifyURI) == nil)
                 }
+            } header: {
+                Text("Eller klistra in en länk")
+            } footer: {
+                Text("Stödjer både delningslänkar (open.spotify.com) och spotify:-URI:er.")
             }
         }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { EditButton() }
+        .sheet(isPresented: $showPlaylistPicker) {
+            SpotifyPlaylistPickerView(mode: spotifyMode) { added in
+                resources.append(contentsOf: added)
+                onChange()
+            }
+        }
         .fileImporter(isPresented: $showImporter,
                       allowedContentTypes: [.audio],
                       allowsMultipleSelection: true) { result in
@@ -81,6 +97,15 @@ struct PlaylistEditorView: View {
                 onChange()
             }
         }
+    }
+
+    /// Normalize the pasted text to a canonical `spotify:` URI before storing it, so a
+    /// pasted open.spotify.com share link becomes something the SDK can actually play.
+    private func addPastedSpotifyURI() {
+        guard let uri = SpotifyURI.normalize(spotifyURI) else { return }
+        resources.append(.spotify(uri: uri))
+        onChange()
+        spotifyURI = ""
     }
 
     private func iconName(for resource: AudioResource) -> String {

@@ -49,7 +49,8 @@ struct SetupView: View {
             NavigationLink {
                 PlaylistEditorView(title: "Spellista",
                                    resources: playlistBinding(\.gamePlaylist),
-                                   onChange: store.save)
+                                   onChange: store.save,
+                                   spotifyMode: .expandTracks)
             } label: {
                 row { labeled("Match-spellista", "\(store.config.gamePlaylist.count) låtar") }
             }
@@ -57,7 +58,8 @@ struct SetupView: View {
             NavigationLink {
                 PlaylistEditorView(title: "Paus-spellista",
                                    resources: playlistBinding(\.intermissionPlaylist),
-                                   onChange: store.save)
+                                   onChange: store.save,
+                                   spotifyMode: .playlistContext)
             } label: {
                 row { labeled("Paus-spellista", "\(store.config.intermissionPlaylist.count) låtar") }
             }
