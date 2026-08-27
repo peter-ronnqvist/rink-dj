@@ -1,8 +1,8 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Assign a single audio resource to an event: pick a local MP3 (works today) or
-/// enter a Spotify URI (stored now, playable in Phase 2).
+/// Assign a single audio resource to an event: pick a local MP3, an app-bundled sound,
+/// or a Spotify track chosen from one of the user's playlists.
 struct ResourcePickerView: View {
     let title: String
     @Binding var resource: AudioResource?
@@ -14,7 +14,7 @@ struct ResourcePickerView: View {
 
     @Environment(ConfigStore.self) private var store
     @State private var showImporter = false
-    @State private var spotifyURI = ""
+    @State private var showTrackPicker = false
 
     var body: some View {
         Form {
@@ -59,28 +59,23 @@ struct ResourcePickerView: View {
                 } label: {
                     Label("Importera ljudfil…", systemImage: "square.and.arrow.down")
                 }
-            }
-
-            Section {
-                TextField("spotify:track:…", text: $spotifyURI)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                Button("Använd Spotify-låt") {
-                    let trimmed = spotifyURI.trimmingCharacters(in: .whitespaces)
-                    guard !trimmed.isEmpty else { return }
-                    resource = .spotify(uri: trimmed)
-                    onChange()
-                    spotifyURI = ""
+                Button {
+                    showTrackPicker = true
+                } label: {
+                    Label("Välj Spotify-låt…", systemImage: "music.note")
                 }
-                .disabled(spotifyURI.trimmingCharacters(in: .whitespaces).isEmpty)
-            } header: {
-                Text("Spotify (Fas 2)")
-            } footer: {
-                Text("Spotify-uppspelning aktiveras i Fas 2 på en fysisk enhet med Premium.")
             }
         }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showTrackPicker) {
+            SpotifyPlaylistPickerView(mode: .pickTrack) { added in
+                if let track = added.first {
+                    resource = track
+                    onChange()
+                }
+            }
+        }
         .fileImporter(isPresented: $showImporter,
                       allowedContentTypes: [.audio],
                       allowsMultipleSelection: false) { result in
