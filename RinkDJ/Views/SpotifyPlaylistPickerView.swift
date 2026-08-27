@@ -191,9 +191,7 @@ struct SpotifyPlaylistPickerView: View {
             importingName = playlist.name
             phase = .importing
             do {
-                // Read tracks over the App Remote connection (content API), not the Web API —
-                // the Web API's /playlists/{id}/tracks returns 403 with an App Remote token.
-                let tracks = try await spotify.fetchPlaylistTracks(uri: playlist.uri)
+                let tracks = try await loadAllTracks(of: playlist)
                 guard !tracks.isEmpty else {
                     phase = .error("Kunde inte läsa spellistans låtar. Kontrollera att Spotify är anslutet och försök igen.")
                     return
@@ -206,6 +204,22 @@ struct SpotifyPlaylistPickerView: View {
         case .pickTrack:
             break // handled by navigating into SpotifyTrackListView, not here
         }
+    }
+
+    /// Read *all* of a playlist's tracks for the Match-spellista. Prefer the Web API, which
+    /// paginates through the whole playlist; the App Remote content API only returns the
+    /// first ~20-track page (no offset), which truncated long lists. Fall back to it if the
+    /// Web API request fails or yields nothing.
+    private func loadAllTracks(of playlist: SpotifyPlaylist) async throws -> [SpotifyTrack] {
+        if let token = spotify.accessToken {
+            do {
+                let tracks = try await api.fetchPlaylistTracks(playlistID: playlist.id, token: token)
+                if !tracks.isEmpty { return tracks }
+            } catch {
+                print("Web API track fetch failed, falling back to App Remote: \(error)")
+            }
+        }
+        return try await spotify.fetchPlaylistTracks(uri: playlist.uri)
     }
 
     private func message(for error: Error) -> String {

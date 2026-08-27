@@ -56,9 +56,32 @@ struct SpotifyWebAPI {
         return result
     }
 
-    // Note: a playlist's *tracks* are read via the App Remote content API
-    // (`SpotifyEngine.fetchPlaylistTracks`), not here — the Web API's
-    // `/playlists/{id}/tracks` returns 403 with an App Remote access token.
+    /// All playable tracks of a playlist, paginated through `next` so the whole list is
+    /// returned — not just the first ~20-item page the App Remote content API is capped at
+    /// (it has no offset parameter). The caller falls back to the content API if this fails,
+    /// since some older App Remote tokens were seen to 403 on this endpoint.
+    func fetchPlaylistTracks(playlistID: String, token: String) async throws -> [SpotifyTrack] {
+        var url: URL? = base.appending(path: "playlists/\(playlistID)/tracks").appending(queryItems: [
+            URLQueryItem(name: "limit", value: "100"),
+            URLQueryItem(name: "market", value: "from_token"),
+            // Trim the payload to just the fields we map below.
+            URLQueryItem(name: "fields", value: "next,items(track(uri,name,is_playable,artists(name)))")
+        ])
+        var result: [SpotifyTrack] = []
+        while let page = url {
+            let response: PlaylistTracksResponse = try await get(page, token: token)
+            result += response.items.compactMap { item -> SpotifyTrack? in
+                guard let track = item.track, let uri = track.uri, let name = track.name,
+                      track.isPlayable != false else { return nil }
+                if let artist = track.artists?.first?.name, !artist.isEmpty {
+                    return SpotifyTrack(uri: uri, name: "\(name) – \(artist)")
+                }
+                return SpotifyTrack(uri: uri, name: name)
+            }
+            url = response.next.flatMap(URL.init(string:))
+        }
+        return result
+    }
 
     // MARK: - HTTP
 
@@ -101,6 +124,25 @@ struct SpotifyWebAPI {
             let tracks: Tracks?
             struct Image: Decodable { let url: String? }
             struct Tracks: Decodable { let total: Int? }
+        }
+    }
+
+    private struct PlaylistTracksResponse: Decodable {
+        let items: [Item]
+        let next: String?
+        struct Item: Decodable {
+            let track: Track?
+            struct Track: Decodable {
+                let uri: String?
+                let name: String?
+                let isPlayable: Bool?
+                let artists: [Artist]?
+                struct Artist: Decodable { let name: String? }
+                enum CodingKeys: String, CodingKey {
+                    case uri, name, artists
+                    case isPlayable = "is_playable"
+                }
+            }
         }
     }
 
