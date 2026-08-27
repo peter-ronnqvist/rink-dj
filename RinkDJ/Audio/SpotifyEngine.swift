@@ -34,6 +34,10 @@ final class SpotifyEngine: NSObject, AudioEngine {
     /// socket finishes connecting. `nil` until the user authorizes.
     var accessToken: String? { appRemote.connectionParameters.accessToken }
 
+    /// OAuth scopes requested so the same token can also list the user's playlists via
+    /// the Web API. Reused when relaunching Spotify to resume playback.
+    private static let authScopes = ["playlist-read-private", "playlist-read-collaborative"]
+
     /// A playback action deferred until App Remote finishes connecting.
     @ObservationIgnored private var pendingAction: (() -> Void)?
     /// Fired when the current one-shot ends naturally (Icing/Off-side → Avblåsning chain).
@@ -61,8 +65,7 @@ final class SpotifyEngine: NSObject, AudioEngine {
         // Web API (see SpotifyWebAPI) so they can be picked in Setup.
         appRemote.authorizeAndPlayURI("",
                                       asRadio: false,
-                                      additionalScopes: ["playlist-read-private",
-                                                         "playlist-read-collaborative"]) { [weak self] success in
+                                      additionalScopes: Self.authScopes) { [weak self] success in
             if !success {
                 self?.connectionError = "Spotify-appen är inte installerad på den här enheten."
                 self?.statusMessage = "Inte ansluten"
@@ -102,31 +105,22 @@ final class SpotifyEngine: NSObject, AudioEngine {
 
     func playOneShot(_ resource: AudioResource, completion: (() -> Void)?) {
         guard case .spotify(let uri, _) = resource else { completion?(); return }
-        run {
-            self.appRemote.playerAPI?.play(uri) { [weak self] _, error in
-                self?.report(error)
-            }
-            self.armOneShotCompletion(completion)
+        play(uri: uri) { [weak self] in
+            self?.armOneShotCompletion(completion)
         }
     }
 
     func playPlaylist(_ resources: [AudioResource], loop: Bool) {
         guard let first = resources.first, case .spotify(let uri, _) = first else { return }
-        run {
-            self.appRemote.playerAPI?.play(uri) { [weak self] _, error in
-                self?.report(error)
-                self?.appRemote.playerAPI?.setRepeatMode(loop ? .context : .off) { _, _ in }
-            }
+        play(uri: uri) { [weak self] in
+            self?.appRemote.playerAPI?.setRepeatMode(loop ? .context : .off) { _, _ in }
         }
     }
 
     func playLooping(_ resource: AudioResource) {
         guard case .spotify(let uri, _) = resource else { return }
-        run {
-            self.appRemote.playerAPI?.play(uri) { [weak self] _, error in
-                self?.report(error)
-                self?.appRemote.playerAPI?.setRepeatMode(.track) { _, _ in }
-            }
+        play(uri: uri) { [weak self] in
+            self?.appRemote.playerAPI?.setRepeatMode(.track) { _, _ in }
         }
     }
 
@@ -175,18 +169,36 @@ final class SpotifyEngine: NSObject, AudioEngine {
 
     // MARK: - Helpers
 
-    /// Run a playback action now if connected, otherwise connect (or authorize) first
-    /// and run it once the connection is established.
-    private func run(_ action: @escaping () -> Void) {
+    /// Play a Spotify URI, then apply `postPlay` (repeat mode, or arming the one-shot
+    /// completion) once playback has started. Handles three connection states:
+    ///  - Connected: play directly over App Remote.
+    ///  - Disconnected but already authorized: the Spotify app was most likely *suspended*
+    ///    by iOS while we kept it paused during a local sound — the App Remote socket drops
+    ///    after ~20 s. A plain `connect()` cannot wake a suspended app, so relaunch it with
+    ///    the URI via `authorizeAndPlayURI` (which can); `postPlay` runs once the connection
+    ///    re-establishes. This is what lets Avblåsning play the next Spotify track after a
+    ///    long event sound.
+    ///  - No token yet: authorize (which opens Spotify), then play + `postPlay` on connect.
+    private func play(uri: String, postPlay: @escaping () -> Void) {
         if appRemote.isConnected {
-            action()
-        } else {
-            pendingAction = action
-            if appRemote.connectionParameters.accessToken != nil {
-                appRemote.connect()
-            } else {
-                authorize()
+            appRemote.playerAPI?.play(uri) { [weak self] _, error in
+                self?.report(error)
+                postPlay()
             }
+        } else if appRemote.connectionParameters.accessToken != nil {
+            pendingAction = postPlay
+            appRemote.authorizeAndPlayURI(uri, asRadio: false,
+                                          additionalScopes: Self.authScopes) { [weak self] success in
+                if !success { self?.connectionError = "Kunde inte återansluta till Spotify." }
+            }
+        } else {
+            pendingAction = { [weak self] in
+                self?.appRemote.playerAPI?.play(uri) { _, error in
+                    self?.report(error)
+                    postPlay()
+                }
+            }
+            authorize()
         }
     }
 
