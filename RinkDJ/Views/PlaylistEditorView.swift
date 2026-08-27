@@ -56,7 +56,7 @@ struct PlaylistEditorView: View {
                 Text("Dra för att ändra ordning. Svep för att ta bort.")
             }
 
-            Section("Lägg till") {
+            Section {
                 Button {
                     showImporter = true
                 } label: {
@@ -68,6 +68,12 @@ struct PlaylistEditorView: View {
                 } label: {
                     Label("Välj Spotify-spellista…", systemImage: "music.note.list")
                 }
+            } header: {
+                Text("Lägg till")
+            } footer: {
+                Text("En Spotify-spellista importeras högst 20 låtar i taget. "
+                     + "Har du fler: dela upp spellistan i delar på max 20 låtar i Spotify "
+                     + "och importera varje del – de läggs till efter varandra.")
             }
         }
         .navigationTitle(title)
