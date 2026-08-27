@@ -56,9 +56,9 @@ struct AppConfig: Codable {
                 .localFile(fileName: "demo_track2.wav"),
                 .localFile(fileName: "demo_track3.wav")
             ],
-            intermissionPlaylist: [
-                .localFile(fileName: "demo_intermission.wav")
-            ],
+            // The Paus-spellista holds one whole Spotify playlist (or nothing); it has no
+            // local demo seed, so it starts empty until a Spotify playlist is picked.
+            intermissionPlaylist: [],
             eventTracks: [
                 GameEvent.icing.rawValue:          .localFile(fileName: "icing.mp3"),
                 GameEvent.offside.rawValue:        .localFile(fileName: "offside.mp3"),

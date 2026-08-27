@@ -56,12 +56,12 @@ struct SetupView: View {
             }
             Divider()
             NavigationLink {
-                PlaylistEditorView(title: "Paus-spellista",
-                                   resources: playlistBinding(\.intermissionPlaylist),
-                                   onChange: store.save,
-                                   spotifyMode: .playlistContext)
+                IntermissionPlaylistView(title: "Paus-spellista",
+                                         resources: playlistBinding(\.intermissionPlaylist),
+                                         onChange: store.save)
             } label: {
-                row { labeled("Paus-spellista", "\(store.config.intermissionPlaylist.count) låtar") }
+                row { labeled("Paus-spellista",
+                              store.config.intermissionPlaylist.first?.displayName ?? "Ingen") }
             }
             footer("Vid varje avblåsning spelas nästa låt i spellistan. Pausen spelar paus-spellistan.")
         }
