@@ -47,15 +47,11 @@ struct AppConfig: Codable {
 
     // MARK: Default configuration
 
-    /// Sensible out-of-the-box config using the demo sounds bundled with the app,
-    /// so the app does something audible on first launch in the Simulator.
+    /// Sensible out-of-the-box config using the sounds bundled with the app.
     static var demo: AppConfig {
         AppConfig(
-            gamePlaylist: [
-                .localFile(fileName: "demo_track1.wav"),
-                .localFile(fileName: "demo_track2.wav"),
-                .localFile(fileName: "demo_track3.wav")
-            ],
+            // The Match-spellista is built from a Spotify playlist, so it starts empty.
+            gamePlaylist: [],
             // The Paus-spellista holds one whole Spotify playlist (or nothing); it has no
             // local demo seed, so it starts empty until a Spotify playlist is picked.
             intermissionPlaylist: [],
@@ -64,11 +60,11 @@ struct AppConfig: Codable {
                 GameEvent.offside.rawValue:        .localFile(fileName: "offside.mp3"),
                 GameEvent.hemmamal.rawValue:       .localFile(fileName: "FlempanGoal.mp3"),
                 GameEvent.bortamal.rawValue:       .localFile(fileName: "frolic.mp3"),
-                GameEvent.hemmautvisning.rawValue: .localFile(fileName: "demo_penalty.wav"),
-                GameEvent.bortautvisning.rawValue: .localFile(fileName: "demo_penalty.wav"),
+                GameEvent.hemmautvisning.rawValue: .localFile(fileName: "wopwop.mp3"),
+                GameEvent.bortautvisning.rawValue: .localFile(fileName: "wopwop.mp3"),
                 GameEvent.fulltalig.rawValue:      .localFile(fileName: "fullStrength.mp3"),
                 GameEvent.timeout.rawValue:        .localFile(fileName: "cricket.mp3"),
-                GameEvent.matchslut.rawValue:      .localFile(fileName: "demo_matchslut.wav")
+                GameEvent.matchslut.rawValue:      .localFile(fileName: "wopwop.mp3")
             ],
             branding: .flemingsbergsIK,
             advancedMode: false
