@@ -49,6 +49,8 @@ struct RootView: View {
                 .tabItem { Label("Speaker", systemImage: "megaphone.fill") }
             ShotsView()
                 .tabItem { Label("Skott", systemImage: "scope") }
+            ShotMapView()
+                .tabItem { Label("Skottkarta", systemImage: "chart.dots.scatter") }
             SetupView()
                 .tabItem { Label("Inställningar", systemImage: "gearshape.fill") }
         }
