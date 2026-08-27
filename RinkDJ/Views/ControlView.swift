@@ -29,6 +29,7 @@ struct ControlView: View {
                 .padding(10)
             }
 
+            volumeBar
             nowPlayingBar
         }
         .background(BrandBackground(accent: store.config.branding.accentColor))
@@ -48,6 +49,24 @@ struct ControlView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
+        .background(.bar)
+    }
+
+    /// System output-volume slider, so the operator can duck the music (Spotify or local)
+    /// during announcements without reaching for the hardware buttons.
+    private var volumeBar: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "speaker.fill")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            SystemVolumeSlider(tint: store.config.branding.accentColor)
+                .frame(height: 28)
+            Image(systemName: "speaker.wave.3.fill")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 6)
         .background(.bar)
     }
 
