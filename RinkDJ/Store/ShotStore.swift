@@ -1,10 +1,12 @@
 import Foundation
 import Observation
 
-/// Shots-on-goal tally for the current game. One `PeriodShots` per period played; only
-/// the last (current) period is editable — advancing the period appends a fresh one and
-/// thereby "locks" the earlier totals. `@Observable` (iOS 17+) so the Skott view binds to
-/// it, and it persists to a single JSON file in Documents like `ConfigStore`.
+/// Shots-on-goal tally for the current game. Every shot is stored individually with its
+/// rink position, the period it was taken in, and which team it credited, so the same data
+/// drives both the Skott counter and the Skottkarta (shot map) tab. Per-team/period counts
+/// are derived from this one list — no separate counters to keep in sync. `@Observable`
+/// (iOS 17+) so the views bind to it, and it persists to a single JSON file in Documents
+/// like `ConfigStore`.
 @Observable
 final class ShotStore {
     var game: ShotGame
@@ -18,18 +20,30 @@ final class ShotStore {
 
     // MARK: - Mutations (each persists)
 
-    func addHome() { current.home += 1; save() }
-    func addAway() { current.away += 1; save() }
+    /// Register a shot at a normalized rink position (0…1 on each axis). `isHome` is the
+    /// attacking team the tap credited; `x`/`y` are stored raw so the map can mirror ends.
+    func addShot(isHome: Bool, x: Double, y: Double) {
+        game.shots.append(Shot(x: x, y: y, period: game.currentIndex, isHome: isHome))
+        save()
+    }
 
-    /// Correct a mis-tap. Clamped at zero and only affects the current (editable) period.
-    func removeHome() { current.home = max(0, current.home - 1); save() }
-    func removeAway() { current.away = max(0, current.away - 1); save() }
+    /// Correct a mis-tap by dropping the most recent shot for that team in the current
+    /// (editable) period. No-op if there is none.
+    func removeHome() { removeLastShot(isHome: true) }
+    func removeAway() { removeLastShot(isHome: false) }
 
-    /// Lock the current period and start the next one. No-op once at overtime.
+    private func removeLastShot(isHome: Bool) {
+        if let i = game.shots.lastIndex(where: { $0.period == game.currentIndex && $0.isHome == isHome }) {
+            game.shots.remove(at: i)
+            save()
+        }
+    }
+
+    /// Lock the current period and start the next one. No-op once at overtime. Shots keep
+    /// accumulating — advancing only moves which period new taps are filed under.
     func nextPeriod() {
         guard canAdvancePeriod else { return }
-        game.periods.append(PeriodShots())
-        game.currentIndex = game.periods.count - 1
+        game.currentIndex += 1
         save()
     }
 
@@ -48,14 +62,26 @@ final class ShotStore {
 
     // MARK: - Derived values for the UI
 
-    var homeTotal: Int { game.periods.reduce(0) { $0 + $1.home } }
-    var awayTotal: Int { game.periods.reduce(0) { $0 + $1.away } }
+    var homeTotal: Int { game.shots.lazy.filter { $0.isHome }.count }
+    var awayTotal: Int { game.shots.lazy.filter { !$0.isHome }.count }
 
     /// Shots in the current (editable) period — the big number the taps drive.
-    var currentHome: Int { game.periods[game.currentIndex].home }
-    var currentAway: Int { game.periods[game.currentIndex].away }
+    var currentHome: Int { periodTotals(game.currentIndex).home }
+    var currentAway: Int { periodTotals(game.currentIndex).away }
 
-    var canAdvancePeriod: Bool { game.periods.count < Self.maxPeriods }
+    var canAdvancePeriod: Bool { game.currentIndex < Self.maxPeriods - 1 }
+
+    /// Number of periods played so far (1-based), i.e. Period 1 through the current one.
+    var playedPeriodCount: Int { game.currentIndex + 1 }
+
+    /// Home/away shot counts for a single period index.
+    func periodTotals(_ index: Int) -> (home: Int, away: Int) {
+        var home = 0, away = 0
+        for shot in game.shots where shot.period == index {
+            if shot.isHome { home += 1 } else { away += 1 }
+        }
+        return (home, away)
+    }
 
     /// Label for a period index: "1", "2", "3", then "Förlängning" (overtime).
     static func periodLabel(_ index: Int) -> String {
@@ -69,16 +95,9 @@ final class ShotStore {
     func lockedPeriods(home: Bool) -> [(index: Int, label: String, count: Int)] {
         guard game.currentIndex > 0 else { return [] }
         return (0..<game.currentIndex).map { i in
-            let p = game.periods[i]
-            return (i, Self.periodLabel(i), home ? p.home : p.away)
+            let totals = periodTotals(i)
+            return (i, Self.periodLabel(i), home ? totals.home : totals.away)
         }
-    }
-
-    // MARK: - Editable current period
-
-    private var current: PeriodShots {
-        get { game.periods[game.currentIndex] }
-        set { game.periods[game.currentIndex] = newValue }
     }
 
     // MARK: - Persistence (single JSON file in Documents)
@@ -102,16 +121,21 @@ final class ShotStore {
     }
 }
 
-/// Shots for a single period.
-struct PeriodShots: Codable {
-    var home = 0
-    var away = 0
+/// A single shot: its normalized rink position, the period it was taken in, and which team
+/// it credited. `x`/`y` are the raw tap position (0 = left/top edge, 1 = right/bottom);
+/// the shot map mirrors ends per team using this raw value.
+struct Shot: Codable {
+    var x: Double
+    var y: Double
+    var period: Int
+    var isHome: Bool
 }
 
-/// The whole tally: one entry per period played (index 0 = Period 1). Only the period at
-/// `currentIndex` is edited; earlier ones are locked once the period is advanced.
+/// The whole tally: every shot of the game plus which period is currently editable. Shots
+/// accumulate across periods (advancing just changes which period new shots are filed
+/// under); "Ny match" clears them.
 struct ShotGame: Codable {
-    var periods: [PeriodShots] = [PeriodShots()]
+    var shots: [Shot] = []
     var currentIndex = 0
     /// Which end the home goalie defends in period 1. Default `true` (home team attacks
     /// to the right); a tap on the centre faceoff dot overrides it. Goalies swap ends
@@ -120,11 +144,11 @@ struct ShotGame: Codable {
 
     init() {}
 
-    /// Decode leniently so a game saved by an earlier version (without `homeStartsLeft`)
-    /// still loads instead of being discarded.
+    /// Decode leniently so a game saved by an earlier version (or with missing keys) still
+    /// loads instead of being discarded.
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        periods = try c.decodeIfPresent([PeriodShots].self, forKey: .periods) ?? [PeriodShots()]
+        shots = try c.decodeIfPresent([Shot].self, forKey: .shots) ?? []
         currentIndex = try c.decodeIfPresent(Int.self, forKey: .currentIndex) ?? 0
         homeStartsLeft = try c.decodeIfPresent(Bool.self, forKey: .homeStartsLeft) ?? true
     }

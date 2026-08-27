@@ -3,7 +3,8 @@ import SwiftUI
 /// The "Skott" tab: a landscape shots-on-goal counter. One person turns the phone 90° and
 /// taps each goal end to tally that team's shots. Counts are kept per period; advancing the
 /// period (center) locks the previous period's totals. Discreet minus buttons correct
-/// mis-taps and "Ny match" resets to Period 1. State lives in `ShotStore` (persisted).
+/// mis-taps, "Visa" shows the running result without touching the data, and "Ny match"
+/// resets to Period 1. State lives in `ShotStore` (persisted).
 struct ShotsView: View {
     @Environment(ShotStore.self) private var shots
     @Environment(ConfigStore.self) private var store
@@ -11,6 +12,7 @@ struct ShotsView: View {
     @State private var confirmNextPeriod = false
     @State private var confirmNewGame = false
     @State private var showRules = false
+    @State private var showSummary = false
 
     private var accent: Color { store.config.branding.accentColor }
 
@@ -43,12 +45,23 @@ struct ShotsView: View {
             }
             .allowsHitTesting(false)
 
-            // Tap zones over each half. A tap is a shot ON that goal, so it credits the
-            // *attacking* team — the opposite of the goalie standing there.
-            HStack(spacing: 0) {
-                tapZone(action: homeGoalieLeft ? shots.addAway : shots.addHome)
-                tapZone(action: homeGoalieLeft ? shots.addHome : shots.addAway)
+            // Tap surface over the whole rink. A tap is a shot ON the goal at that end, so
+            // it credits the *attacking* team — the opposite of the goalie standing there.
+            // The tap's position (normalized to the rink) is stored so the Skottkarta tab
+            // can plot it. Padding matches HockeyRinkView so coords line up with the rink.
+            GeometryReader { geo in
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture(coordinateSpace: .local) { point in
+                        let nx = point.x / geo.size.width
+                        let ny = point.y / geo.size.height
+                        let leftHalf = nx < 0.5
+                        let isHome = leftHalf ? !homeGoalieLeft : homeGoalieLeft
+                        shots.addShot(isHome: isHome, x: nx, y: ny)
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    }
             }
+            .padding(8)
 
             // Foreground controls capture their own taps (they sit above the tap zones).
             // Each team's counter sits above the goal it is attacking, so it swaps sides
@@ -67,6 +80,7 @@ struct ShotsView: View {
                     Spacer()
                     HStack(spacing: 16) {
                         infoButton
+                        summaryButton
                         newGameButton
                     }
                     Spacer()
@@ -81,33 +95,29 @@ struct ShotsView: View {
             faceoffToggle
         }
         .confirmationDialog("Avsluta period \(shots.currentPeriodLabel)?", isPresented: $confirmNextPeriod, titleVisibility: .visible) {
-            Button("Nästa period") { shots.nextPeriod() }
+            Button("Nästa period") {
+                shots.nextPeriod()
+                showSummary = true
+            }
             Button("Avbryt", role: .cancel) {}
         } message: {
-            Text("\(currentPeriodStats)\n\nPeriodens skott låses och kan inte längre ändras.")
+            Text("Periodens skott låses och kan inte längre ändras.")
         }
         .confirmationDialog("Avsluta matchen?", isPresented: $confirmNewGame, titleVisibility: .visible) {
             Button("Ny match", role: .destructive) { shots.newGame() }
             Button("Avbryt", role: .cancel) {}
         } message: {
-            Text("\(finalStats)\n\nAlla skott nollställs och perioden återställs till 1.")
+            Text("Alla skott nollställs och perioden återställs till 1.")
         }
         .sheet(isPresented: $showRules) {
             ShotRulesView(accent: accent)
         }
+        .sheet(isPresented: $showSummary) {
+            ShotSummaryView(accent: accent)
+        }
     }
 
     // MARK: - Pieces
-
-    private func tapZone(action: @escaping () -> Void) -> some View {
-        Color.clear
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .contentShape(Rectangle())
-            .onTapGesture {
-                action()
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            }
-    }
 
     /// The counter for one team (Hemma or Borta), placed above the goal it is attacking.
     private func teamCounter(isHome: Bool) -> some View {
@@ -163,20 +173,6 @@ struct ShotsView: View {
         .background(.black.opacity(0.35), in: RoundedRectangle(cornerRadius: 14))
     }
 
-    /// Stats for the current period being locked in, one team per line.
-    private var currentPeriodStats: String {
-        "Hemma: \(shots.currentHome)\nBorta: \(shots.currentAway)"
-    }
-
-    /// Full end-of-game stats for both teams: totals plus a per-period Hemma–Borta line.
-    private var finalStats: String {
-        var lines = ["Hemma: \(shots.homeTotal)   Borta: \(shots.awayTotal)", ""]
-        for (i, period) in shots.game.periods.enumerated() {
-            lines.append("\(ShotStore.periodLabel(i)): \(period.home)–\(period.away)")
-        }
-        return lines.joined(separator: "\n")
-    }
-
     private var periodControl: some View {
         Button {
             if shots.canAdvancePeriod { confirmNextPeriod = true }
@@ -230,6 +226,22 @@ struct ShotsView: View {
         .foregroundStyle(.secondary)
     }
 
+    /// Shows the running match result without changing any data. Styled like the discreet
+    /// pills next to it.
+    private var summaryButton: some View {
+        Button {
+            showSummary = true
+        } label: {
+            Label("Visa", systemImage: "magnifyingglass")
+                .font(.caption.bold())
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(.black.opacity(0.35), in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.secondary)
+    }
+
     private var newGameButton: some View {
         Button {
             confirmNewGame = true
@@ -242,79 +254,6 @@ struct ShotsView: View {
         }
         .buttonStyle(.plain)
         .foregroundStyle(.secondary)
-    }
-}
-
-/// A hockey rink drawn with SwiftUI (no bitmap): white ice, red/blue lines, faceoff
-/// circles and goal creases. Purely decorative — the tap handling lives in `ShotsView`.
-private struct HockeyRinkView: View {
-    var accent: Color
-
-    private let red = Color(red: 0.85, green: 0.15, blue: 0.15)
-    private let blue = Color(red: 0.10, green: 0.45, blue: 0.85)
-
-    var body: some View {
-        Canvas { context, size in
-            let w = size.width, h = size.height
-            let inset = h * 0.04
-            let rink = CGRect(x: inset, y: inset, width: w - inset * 2, height: h - inset * 2)
-            let corner = rink.height * 0.20
-
-            // Ice surface + boards.
-            let boards = Path(roundedRect: rink, cornerRadius: corner)
-            context.fill(boards, with: .color(Color(white: 0.97)))
-            context.stroke(boards, with: .color(Color(white: 0.55)), lineWidth: rink.height * 0.02)
-
-            let lineW = rink.height * 0.012
-
-            // Goal lines (red) near each end.
-            for gx in [rink.minX + rink.width * 0.07, rink.maxX - rink.width * 0.07] {
-                context.stroke(verticalLine(x: gx, in: rink), with: .color(red.opacity(0.8)), lineWidth: lineW)
-                // Goal crease.
-                let crease = CGRect(x: gx - rink.width * 0.02, y: rink.midY - rink.height * 0.06,
-                                    width: rink.width * 0.04, height: rink.height * 0.12)
-                context.fill(Path(roundedRect: crease, cornerRadius: crease.width * 0.4),
-                             with: .color(blue.opacity(0.20)))
-            }
-
-            // Blue lines.
-            for bx in [rink.minX + rink.width * 0.33, rink.maxX - rink.width * 0.33] {
-                context.stroke(verticalLine(x: bx, in: rink), with: .color(blue.opacity(0.85)),
-                               lineWidth: lineW * 2)
-            }
-
-            // Center red line (dashed) + center circle + dot.
-            context.stroke(verticalLine(x: rink.midX, in: rink), with: .color(red),
-                           style: StrokeStyle(lineWidth: lineW * 2, dash: [rink.height * 0.05]))
-            let cr = rink.height * 0.15
-            context.stroke(circle(center: CGPoint(x: rink.midX, y: rink.midY), radius: cr),
-                           with: .color(blue.opacity(0.85)), lineWidth: lineW)
-            context.fill(circle(center: CGPoint(x: rink.midX, y: rink.midY), radius: rink.height * 0.02),
-                         with: .color(red))
-
-            // Four faceoff circles.
-            let fr = rink.height * 0.13
-            for fx in [rink.minX + rink.width * 0.20, rink.maxX - rink.width * 0.20] {
-                for fy in [rink.midY - rink.height * 0.22, rink.midY + rink.height * 0.22] {
-                    context.stroke(circle(center: CGPoint(x: fx, y: fy), radius: fr),
-                                   with: .color(red.opacity(0.8)), lineWidth: lineW)
-                    context.fill(circle(center: CGPoint(x: fx, y: fy), radius: rink.height * 0.015),
-                                 with: .color(red.opacity(0.8)))
-                }
-            }
-        }
-    }
-
-    private func verticalLine(x: CGFloat, in rect: CGRect) -> Path {
-        Path { p in
-            p.move(to: CGPoint(x: x, y: rect.minY))
-            p.addLine(to: CGPoint(x: x, y: rect.maxY))
-        }
-    }
-
-    private func circle(center: CGPoint, radius: CGFloat) -> Path {
-        Path(ellipseIn: CGRect(x: center.x - radius, y: center.y - radius,
-                               width: radius * 2, height: radius * 2))
     }
 }
 
@@ -387,6 +326,89 @@ private struct ShotRulesView: View {
             Label(title, systemImage: systemImage)
                 .font(.headline)
                 .foregroundStyle(tint)
+        }
+    }
+}
+
+/// Non-destructive match result, shown from the "Visa" button in `ShotsView`. Displays the
+/// running Hemma–Borta shot totals and a per-period breakdown without changing any data
+/// (unlike "Ny match", which resets). Uses `ScrollView` + `GroupBox` (not `Form`/`List`) so
+/// it scrolls reliably inside the app's floating `TabView`.
+private struct ShotSummaryView: View {
+    var accent: Color
+    @Environment(ShotStore.self) private var shots
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 20) {
+                    scoreboard
+                    periodBreakdown
+                }
+                .padding()
+            }
+            .navigationTitle("Skottstatistik")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Klar") { dismiss() }
+                }
+            }
+        }
+    }
+
+    /// Big Hemma vs Borta totals across the whole game.
+    private var scoreboard: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 16) {
+            teamTotal(label: "Hemma", value: shots.homeTotal)
+            Text("–")
+                .font(.system(size: 40, weight: .bold, design: .rounded))
+                .foregroundStyle(.secondary)
+            teamTotal(label: "Borta", value: shots.awayTotal)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func teamTotal(label: String, value: Int) -> some View {
+        VStack(spacing: 4) {
+            Text(label)
+                .font(.subheadline.bold())
+                .foregroundStyle(.secondary)
+            Text("\(value)")
+                .font(.system(size: 56, weight: .heavy, design: .rounded))
+                .foregroundStyle(accent)
+                .monospacedDigit()
+        }
+    }
+
+    /// One row per played period: label, Hemma count, Borta count.
+    private var periodBreakdown: some View {
+        GroupBox {
+            VStack(spacing: 10) {
+                ForEach(0..<shots.playedPeriodCount, id: \.self) { i in
+                    let totals = shots.periodTotals(i)
+                    HStack {
+                        Text(ShotStore.periodLabel(i))
+                            .font(.subheadline.bold())
+                        Spacer()
+                        Text("\(totals.home)")
+                            .frame(minWidth: 36, alignment: .trailing)
+                            .monospacedDigit()
+                        Text("–")
+                            .foregroundStyle(.secondary)
+                        Text("\(totals.away)")
+                            .frame(minWidth: 36, alignment: .leading)
+                            .monospacedDigit()
+                    }
+                    .font(.subheadline)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.top, 4)
+        } label: {
+            Label("Per period (Hemma–Borta)", systemImage: "list.number")
+                .font(.headline)
         }
     }
 }
