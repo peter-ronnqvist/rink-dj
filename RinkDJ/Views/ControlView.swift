@@ -2,7 +2,8 @@ import SwiftUI
 import UIKit
 
 /// The main game-day screen: team header, a grid of big event buttons, and a
-/// now-playing bar with a stop button. This is what the official looks at during a match.
+/// now-playing bar. This is what the official looks at during a match. Playback is stopped
+/// via the Tekning button (`.stopAll`), so the now-playing bar carries no stop control.
 struct ControlView: View {
     @Environment(ConfigStore.self) private var store
     @Environment(PlaybackCoordinator.self) private var coordinator
@@ -76,13 +77,6 @@ struct ControlView: View {
                 .font(.subheadline)
                 .lineLimit(1)
             Spacer()
-            Button(role: .destructive) {
-                coordinator.stop()
-            } label: {
-                Label("Stopp", systemImage: "stop.circle.fill")
-                    .labelStyle(.iconOnly)
-                    .font(.title2)
-            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
