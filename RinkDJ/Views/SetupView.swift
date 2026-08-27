@@ -49,17 +49,19 @@ struct SetupView: View {
             NavigationLink {
                 PlaylistEditorView(title: "Spellista",
                                    resources: playlistBinding(\.gamePlaylist),
-                                   onChange: store.save)
+                                   onChange: store.save,
+                                   spotifyMode: .expandTracks)
             } label: {
                 row { labeled("Match-spellista", "\(store.config.gamePlaylist.count) låtar") }
             }
             Divider()
             NavigationLink {
-                PlaylistEditorView(title: "Paus-spellista",
-                                   resources: playlistBinding(\.intermissionPlaylist),
-                                   onChange: store.save)
+                IntermissionPlaylistView(title: "Paus-spellista",
+                                         resources: playlistBinding(\.intermissionPlaylist),
+                                         onChange: store.save)
             } label: {
-                row { labeled("Paus-spellista", "\(store.config.intermissionPlaylist.count) låtar") }
+                row { labeled("Paus-spellista",
+                              store.config.intermissionPlaylist.first?.displayName ?? "Ingen") }
             }
             footer("Vid varje avblåsning spelas nästa låt i spellistan. Pausen spelar paus-spellistan.")
         }

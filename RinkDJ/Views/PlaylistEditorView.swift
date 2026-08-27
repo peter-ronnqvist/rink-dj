@@ -7,10 +7,14 @@ struct PlaylistEditorView: View {
     let title: String
     @Binding var resources: [AudioResource]
     var onChange: () -> Void
+    /// How a picked Spotify playlist is added: expanded to tracks for the stepped
+    /// Match-spellista, kept whole (looping) for the Paus-spellista.
+    var spotifyMode: SpotifyPickMode
 
     @Environment(ConfigStore.self) private var store
     @State private var showImporter = false
-    @State private var spotifyURI = ""
+    @State private var showPlaylistPicker = false
+    @State private var showClearConfirm = false
 
     var body: some View {
         Form {
@@ -39,36 +43,58 @@ struct PlaylistEditorView: View {
                     }
                 }
             } header: {
-                Text("Låtar (\(resources.count))")
+                HStack {
+                    Text("Låtar (\(resources.count))")
+                    Spacer()
+                    if !resources.isEmpty {
+                        Button("Rensa", role: .destructive) { showClearConfirm = true }
+                            .textCase(nil)
+                            .font(.caption.bold())
+                    }
+                }
             } footer: {
                 Text("Dra för att ändra ordning. Svep för att ta bort.")
             }
 
-            Section("Lägg till") {
+            Section {
                 Button {
                     showImporter = true
                 } label: {
                     Label("Importera MP3-filer…", systemImage: "square.and.arrow.down")
                 }
 
-                HStack {
-                    TextField("spotify:playlist:… eller :track:", text: $spotifyURI)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    Button("Lägg till") {
-                        let trimmed = spotifyURI.trimmingCharacters(in: .whitespaces)
-                        guard !trimmed.isEmpty else { return }
-                        resources.append(.spotify(uri: trimmed))
-                        onChange()
-                        spotifyURI = ""
-                    }
-                    .disabled(spotifyURI.trimmingCharacters(in: .whitespaces).isEmpty)
+                Button {
+                    showPlaylistPicker = true
+                } label: {
+                    Label("Välj Spotify-spellista…", systemImage: "music.note.list")
                 }
+            } header: {
+                Text("Lägg till")
+            } footer: {
+                Text("En Spotify-spellista importeras högst 20 låtar i taget. "
+                     + "Har du fler: dela upp spellistan i delar på max 20 låtar i Spotify "
+                     + "och importera varje del – de läggs till efter varandra.")
             }
         }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { EditButton() }
+        .confirmationDialog("Rensa spellistan?", isPresented: $showClearConfirm,
+                            titleVisibility: .visible) {
+            Button("Rensa alla låtar", role: .destructive) {
+                resources.removeAll()
+                onChange()
+            }
+            Button("Avbryt", role: .cancel) {}
+        } message: {
+            Text("Alla låtar i spellistan tas bort.")
+        }
+        .sheet(isPresented: $showPlaylistPicker) {
+            SpotifyPlaylistPickerView(mode: spotifyMode) { added in
+                resources.append(contentsOf: added)
+                onChange()
+            }
+        }
         .fileImporter(isPresented: $showImporter,
                       allowedContentTypes: [.audio],
                       allowsMultipleSelection: true) { result in
