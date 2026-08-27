@@ -10,6 +10,7 @@ struct ShotsView: View {
 
     @State private var confirmNextPeriod = false
     @State private var confirmNewGame = false
+    @State private var showRules = false
 
     private var accent: Color { store.config.branding.accentColor }
 
@@ -64,7 +65,10 @@ struct ShotsView: View {
                 HStack {
                     minusButton(action: homeGoalieLeft ? shots.removeAway : shots.removeHome)
                     Spacer()
-                    newGameButton
+                    HStack(spacing: 16) {
+                        infoButton
+                        newGameButton
+                    }
                     Spacer()
                     minusButton(action: homeGoalieLeft ? shots.removeHome : shots.removeAway)
                 }
@@ -87,6 +91,9 @@ struct ShotsView: View {
             Button("Avbryt", role: .cancel) {}
         } message: {
             Text("\(finalStats)\n\nAlla skott nollställs och perioden återställs till 1.")
+        }
+        .sheet(isPresented: $showRules) {
+            ShotRulesView(accent: accent)
         }
     }
 
@@ -207,6 +214,22 @@ struct ShotsView: View {
         .buttonStyle(.plain)
     }
 
+    /// Opens the "what counts as a shot on goal" rules sheet. Styled to match the
+    /// discreet "Ny match" pill next to it.
+    private var infoButton: some View {
+        Button {
+            showRules = true
+        } label: {
+            Label("Regler", systemImage: "info.circle")
+                .font(.caption.bold())
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(.black.opacity(0.35), in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.secondary)
+    }
+
     private var newGameButton: some View {
         Button {
             confirmNewGame = true
@@ -292,5 +315,78 @@ private struct HockeyRinkView: View {
     private func circle(center: CGPoint, radius: CGFloat) -> Path {
         Path(ellipseIn: CGRect(x: center.x - radius, y: center.y - radius,
                                width: radius * 2, height: radius * 2))
+    }
+}
+
+/// Reference sheet explaining what does and doesn't count as a shot on goal, shown from
+/// the "Regler" button in `ShotsView`. Uses `ScrollView` + `GroupBox` (not `Form`/`List`)
+/// so it scrolls reliably inside the app's floating `TabView`.
+private struct ShotRulesView: View {
+    var accent: Color
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    section(
+                        title: "Vad som räknas som skott på mål",
+                        systemImage: "checkmark.circle.fill",
+                        tint: .green,
+                        rules: [
+                            ("Mål", "Alla puckar som går i mål registreras som skott."),
+                            ("Målvaktsräddningar", "Skott som målvakten räddar, men som annars skulle ha gått in i målet."),
+                            ("Returer", "Varje nytt avslut efter en retur som uppfyller kriterierna räknas som ett eget skott."),
+                        ]
+                    )
+                    section(
+                        title: "Vad som INTE räknas som skott på mål",
+                        systemImage: "xmark.circle.fill",
+                        tint: .red,
+                        rules: [
+                            ("Ramträffar", "Skott som tar i stolpen eller ribban räknas inte."),
+                            ("Utanför", "Skott som går utanför målramen och plockas av målvakten (om pucken tydligt var på väg utanför)."),
+                            ("Rensningar", "En misslyckad passning eller en ren rensning från egen zon som råkar gå mot mål räknas inte."),
+                            ("Utespelarblockeringar", "Skott som stoppas av en utespelare (täckta skott) räknas inte i målvaktens statistik över skott på mål."),
+                        ]
+                    )
+                }
+                .padding()
+            }
+            .navigationTitle("Skott på mål")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Klar") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private func section(title: String, systemImage: String, tint: Color,
+                         rules: [(term: String, text: String)]) -> some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(rules, id: \.term) { rule in
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text("•")
+                            .foregroundStyle(accent)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(rule.term)
+                                .font(.subheadline.bold())
+                            Text(rule.text)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 4)
+        } label: {
+            Label(title, systemImage: systemImage)
+                .font(.headline)
+                .foregroundStyle(tint)
+        }
     }
 }
