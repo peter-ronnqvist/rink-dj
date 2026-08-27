@@ -23,12 +23,15 @@ final class LocalAudioEngine: NSObject, AudioEngine, AVAudioPlayerDelegate {
         configureSession()
     }
 
-    /// Route audio to playback so it sounds even with the silent switch on, and mixes
-    /// politely if something else is playing.
+    /// Route audio to playback so it sounds even with the silent switch on, and use
+    /// `.mixWithOthers` so activating our session doesn't interrupt other apps. Without
+    /// it, a plain `.playback` session is *interrupting*: iOS suspends the Spotify app
+    /// when we activate, which drops the `SPTAppRemote` connection. We already pause
+    /// Spotify ourselves before playing a local sound, so mixing causes no overlap.
     private func configureSession() {
         #if os(iOS)
         do {
-            try AVAudioSession.sharedInstance().setCategory(.playback, options: [])
+            try AVAudioSession.sharedInstance().setCategory(.playback, options: [.mixWithOthers])
             try AVAudioSession.sharedInstance().setActive(true)
         } catch {
             print("AVAudioSession setup failed: \(error)")
