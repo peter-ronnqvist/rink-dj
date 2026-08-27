@@ -8,6 +8,8 @@ import SwiftUI
 enum SpotifyPickMode {
     case playlistContext
     case expandTracks
+    /// Drill into a playlist and pick one track (for a single event sound).
+    case pickTrack
 }
 
 /// A sheet that lists the user's Spotify playlists and adds the chosen one to a playlist
@@ -112,18 +114,34 @@ struct SpotifyPlaylistPickerView: View {
                     .foregroundStyle(.secondary)
             }
             ForEach(playlists) { playlist in
-                Button { Task { await pick(playlist) } } label: {
-                    HStack(spacing: 12) {
-                        artwork(for: playlist)
-                        VStack(alignment: .leading) {
-                            Text(playlist.name)
-                                .foregroundStyle(.primary)
-                            Text("\(playlist.trackCount) låtar")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                if mode == .pickTrack {
+                    // Drill into the playlist to choose a single track for the event sound.
+                    NavigationLink {
+                        SpotifyTrackListView(playlist: playlist) { track in
+                            onAdd([track])
+                            dismiss()
                         }
+                    } label: {
+                        playlistRow(playlist)
+                    }
+                } else {
+                    Button { Task { await pick(playlist) } } label: {
+                        playlistRow(playlist)
                     }
                 }
+            }
+        }
+    }
+
+    private func playlistRow(_ playlist: SpotifyPlaylist) -> some View {
+        HStack(spacing: 12) {
+            artwork(for: playlist)
+            VStack(alignment: .leading) {
+                Text(playlist.name)
+                    .foregroundStyle(.primary)
+                Text("\(playlist.trackCount) låtar")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -185,6 +203,8 @@ struct SpotifyPlaylistPickerView: View {
             } catch {
                 phase = .error(message(for: error))
             }
+        case .pickTrack:
+            break // handled by navigating into SpotifyTrackListView, not here
         }
     }
 
@@ -196,6 +216,75 @@ struct SpotifyPlaylistPickerView: View {
             return "Behörighet saknas. Koppla från och anslut Spotify igen på Spotify-fliken."
         default:
             return "Kunde inte hämta spellistor. Kontrollera nätverket och försök igen."
+        }
+    }
+}
+
+/// The tracks inside one playlist, for picking a single track as an event sound. Reads the
+/// tracks over the App Remote content API (`SpotifyEngine.fetchPlaylistTracks`), the same
+/// scope-free path used to expand the Match-spellista.
+private struct SpotifyTrackListView: View {
+    let playlist: SpotifyPlaylist
+    /// Called with the chosen track; the parent picker adds it and dismisses the sheet.
+    let onPick: (AudioResource) -> Void
+
+    @Environment(SpotifyEngine.self) private var spotify
+
+    @State private var tracks: [SpotifyTrack] = []
+    @State private var phase: Phase = .loading
+
+    private enum Phase: Equatable {
+        case loading
+        case loaded
+        case error(String)
+    }
+
+    var body: some View {
+        Group {
+            switch phase {
+            case .loading:
+                ProgressView("Hämtar låtar…")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            case .error(let message):
+                VStack(spacing: 12) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.largeTitle)
+                        .foregroundStyle(.yellow)
+                    Text(message)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(.secondary)
+                }
+                .padding()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            case .loaded:
+                List(tracks, id: \.uri) { track in
+                    Button {
+                        onPick(.spotify(uri: track.uri, name: track.name))
+                    } label: {
+                        Label(track.name, systemImage: "music.note")
+                            .lineLimit(1)
+                            .foregroundStyle(.primary)
+                    }
+                }
+            }
+        }
+        .navigationTitle(playlist.name)
+        .navigationBarTitleDisplayMode(.inline)
+        .task { await load() }
+    }
+
+    private func load() async {
+        phase = .loading
+        do {
+            let fetched = try await spotify.fetchPlaylistTracks(uri: playlist.uri)
+            guard !fetched.isEmpty else {
+                phase = .error("Kunde inte läsa spellistans låtar. Kontrollera att Spotify är anslutet och försök igen.")
+                return
+            }
+            tracks = fetched
+            phase = .loaded
+        } catch {
+            phase = .error("Kunde inte läsa låtarna. Kontrollera att Spotify är anslutet och försök igen.")
         }
     }
 }
