@@ -57,17 +57,17 @@ enum GameEvent: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .avblasning:     return "Nästa låt i spellistan"
         case .tekning:        return "Stoppa musiken"
-        case .entre:          return "Entrélåt, sedan spellista"
-        case .icing:          return "Icing-ljud, sedan avblåsning"
-        case .offside:        return "Offside-ljud, sedan avblåsning"
-        case .hemmamal:       return "Hemmalagets mål"
-        case .bortamal:       return "Bortalagets mål"
-        case .hemmautvisning: return "Utvisning hemma"
-        case .bortautvisning: return "Utvisning borta"
-        case .fulltalig:      return "Åter full styrka"
-        case .timeout:        return "Timeout-låt"
+        case .entre:          return "Entrelåt sedan pauslista"
+        case .icing:          return "Icing-ljud sedan spellista"
+        case .offside:        return "Offside-ljud sedan spellista"
+        case .hemmamal:       return ""
+        case .bortamal:       return ""
+        case .hemmautvisning: return ""
+        case .bortautvisning: return ""
+        case .fulltalig:      return ""
+        case .timeout:        return ""
         case .paus:           return "Paus-spellista"
-        case .matchslut:      return "Matchslut-låt"
+        case .matchslut:      return ""
         }
     }
 
@@ -152,8 +152,10 @@ enum GameEvent: String, CaseIterable, Identifiable, Codable {
     static var controlRows: [[GameEvent]] {
         [[.avblasning, .tekning],
          [.icing, .offside],
-         [.hemmamal, .bortamal],
-         [.hemmautvisning, .bortautvisning, .fulltalig],
+         // Away on the left, home on the right: for 2 of 3 periods the home team
+         // attacks to the right, so this matches the ice most of the time.
+         [.bortamal, .hemmamal],
+         [.bortautvisning, .hemmautvisning, .fulltalig],
          [.timeout, .paus, .matchslut],
          [.entre]]
     }
