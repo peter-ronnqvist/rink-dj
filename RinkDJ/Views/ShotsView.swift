@@ -31,7 +31,7 @@ struct ShotsView: View {
         ZStack {
             BrandBackground(accent: accent)
 
-            HockeyRinkView(accent: accent)
+            HockeyRinkView(accent: accent, branding: store.config.branding)
                 .padding(8)
 
             // Zone labels on the ice at each zone's faceoff spots, naming the shots you

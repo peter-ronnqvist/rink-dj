@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// A hockey rink drawn with SwiftUI (no bitmap): white ice, red/blue lines, faceoff
 /// circles and goal creases. Purely decorative — shared by the Skott tally tab
@@ -6,11 +7,26 @@ import SwiftUI
 /// which plots dots over it) so both show the exact same rink.
 struct HockeyRinkView: View {
     var accent: Color
+    /// Team branding, used to place the club logo inside the center circle.
+    var branding: TeamBranding
 
     private let red = Color(red: 0.85, green: 0.15, blue: 0.15)
     private let blue = Color(red: 0.10, green: 0.45, blue: 0.85)
 
     var body: some View {
+        // The rink is centered within the view (symmetric inset), so the center circle
+        // sits at the view's center — overlay the club logo there. Sized to the inscribed
+        // square of the circle (diameter ≈ 0.276·height) so it stays inside the ring.
+        GeometryReader { geo in
+            ZStack {
+                rink
+                centerLogo
+                    .frame(width: geo.size.height * 0.18, height: geo.size.height * 0.18)
+            }
+        }
+    }
+
+    private var rink: some View {
         Canvas { context, size in
             let w = size.width, h = size.height
             let inset = h * 0.04
@@ -40,9 +56,9 @@ struct HockeyRinkView: View {
                                lineWidth: lineW * 2)
             }
 
-            // Center red line (dashed) + center circle + dot.
+            // Center red line (solid) + center circle + dot.
             context.stroke(verticalLine(x: rink.midX, in: rink), with: .color(red),
-                           style: StrokeStyle(lineWidth: lineW * 2, dash: [rink.height * 0.05]))
+                           lineWidth: lineW * 2)
             let cr = rink.height * 0.15
             context.stroke(circle(center: CGPoint(x: rink.midX, y: rink.midY), radius: cr),
                            with: .color(blue.opacity(0.85)), lineWidth: lineW)
@@ -59,6 +75,24 @@ struct HockeyRinkView: View {
                                  with: .color(red.opacity(0.8)))
                 }
             }
+        }
+    }
+
+    /// The club logo for the center circle. Mirrors `TeamLogoView`'s resolution order
+    /// (user-imported file, then bundled asset) but shows nothing if neither exists, so
+    /// the rink is never marred by a placeholder symbol.
+    @ViewBuilder
+    private var centerLogo: some View {
+        if let fileName = branding.logoFileName,
+           let url = FileStore.brandingLogoURL(fileName: fileName),
+           let uiImage = UIImage(contentsOfFile: url.path) {
+            Image(uiImage: uiImage)
+                .resizable()
+                .scaledToFit()
+        } else if let asset = branding.logoAssetName, UIImage(named: asset) != nil {
+            Image(asset)
+                .resizable()
+                .scaledToFit()
         }
     }
 
