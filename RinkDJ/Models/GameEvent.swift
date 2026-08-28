@@ -8,6 +8,7 @@ import SwiftUI
 enum GameEvent: String, CaseIterable, Identifiable, Codable {
     case avblasning      // Whistle — game paused
     case tekning         // Face-off — play resumes
+    case entre           // Teams enter the ice — own sound, then advances (like a goal)
     case icing           // Icing — a flavour of Avblåsning (own sound, then advances)
     case offside         // Off-side — a flavour of Avblåsning (own sound, then advances)
     case hemmamal        // Home goal
@@ -26,6 +27,7 @@ enum GameEvent: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .avblasning:     return "Avblåsning"
         case .tekning:        return "Tekning"
+        case .entre:          return "Entré"
         case .icing:          return "Icing"
         case .offside:        return "Off-side"
         case .hemmamal:       return "Hemmamål"
@@ -55,6 +57,7 @@ enum GameEvent: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .avblasning:     return "Nästa låt i spellistan"
         case .tekning:        return "Stoppa musiken"
+        case .entre:          return "Entrélåt, sedan spellista"
         case .icing:          return "Icing-ljud, sedan avblåsning"
         case .offside:        return "Offside-ljud, sedan avblåsning"
         case .hemmamal:       return "Hemmalagets mål"
@@ -75,6 +78,7 @@ enum GameEvent: String, CaseIterable, Identifiable, Codable {
         // stops play, Tekning resumes it.
         case .avblasning:     return "stop.fill"
         case .tekning:        return "play.fill"
+        case .entre:          return "figure.hockey"
         case .icing:          return "arrow.uturn.left"
         case .offside:        return "flag.slash"
         case .hemmamal:       return "house.fill"
@@ -95,6 +99,7 @@ enum GameEvent: String, CaseIterable, Identifiable, Codable {
         // stops play (red), Tekning resumes it (green).
         case .avblasning:     return .red
         case .tekning:        return Color(red: 0.0, green: 0.5, blue: 0.13) // traffic-light green
+        case .entre:          return .blue
         case .icing:          return .cyan
         case .offside:        return .yellow
         case .hemmamal:       return .green
@@ -115,8 +120,8 @@ enum GameEvent: String, CaseIterable, Identifiable, Codable {
         case .tekning:        return .stopAll
         case .paus:           return .playIntermissionPlaylist
         case .timeout:        return .playLoopedTrack
-        // Goals and penalties are flavours of Avblåsning: play their sound, then advance.
-        case .icing, .offside, .hemmamal, .bortamal,
+        // Entré, goals and penalties are flavours of Avblåsning: play their sound, then advance.
+        case .entre, .icing, .offside, .hemmamal, .bortamal,
              .hemmautvisning, .bortautvisning:
             return .playConfiguredTrackThenAdvance
         case .fulltalig, .matchslut:
@@ -147,7 +152,8 @@ enum GameEvent: String, CaseIterable, Identifiable, Codable {
          [.icing, .offside],
          [.hemmamal, .bortamal],
          [.hemmautvisning, .bortautvisning, .fulltalig],
-         [.timeout, .paus, .matchslut]]
+         [.timeout, .paus, .matchslut],
+         [.entre]]
     }
 
     /// Row layout for the Match screen. In advanced mode this is the full `controlRows`;
