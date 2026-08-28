@@ -40,7 +40,8 @@ final class PlaybackCoordinator {
             advanceGamePlaylist(config.gamePlaylist)
 
         case .playIntermissionPlaylist:
-            playPlaylist(config.intermissionPlaylist, loop: true,
+            // Shuffle so the pause playlist doesn't start from the top every time.
+            playPlaylist(config.intermissionPlaylist.shuffled(), loop: true,
                          label: "Paus", emptyMessage: "Ingen paus-spellista vald")
 
         case .playConfiguredTrack:
@@ -60,6 +61,18 @@ final class PlaybackCoordinator {
             // Play the event's own sound, then act as Avblåsning once it finishes.
             playOneShot(resource) { [weak self] in
                 self?.handle(.avblasning, config: config)
+            }
+            nowPlaying = "\(event.title): \(resource.displayName)"
+
+        case .playConfiguredTrackThenPaus:
+            guard let resource = config.track(for: event) else {
+                // No sound bound: go straight to the pause playlist.
+                handle(.paus, config: config)
+                return
+            }
+            // Play the event's own sound (e.g. Entré), then start the pause playlist.
+            playOneShot(resource) { [weak self] in
+                self?.handle(.paus, config: config)
             }
             nowPlaying = "\(event.title): \(resource.displayName)"
 

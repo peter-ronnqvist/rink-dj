@@ -120,8 +120,10 @@ enum GameEvent: String, CaseIterable, Identifiable, Codable {
         case .tekning:        return .stopAll
         case .paus:           return .playIntermissionPlaylist
         case .timeout:        return .playLoopedTrack
-        // Entré, goals and penalties are flavours of Avblåsning: play their sound, then advance.
-        case .entre, .icing, .offside, .hemmamal, .bortamal,
+        // Entré: play the entrance sound, then start the pause playlist.
+        case .entre:          return .playConfiguredTrackThenPaus
+        // Goals and penalties are flavours of Avblåsning: play their sound, then advance.
+        case .icing, .offside, .hemmamal, .bortamal,
              .hemmautvisning, .bortautvisning:
             return .playConfiguredTrackThenAdvance
         case .fulltalig, .matchslut:
@@ -175,6 +177,7 @@ enum EventAction: Equatable {
     case stopAll                    // Tekning: stop everything
     case playConfiguredTrack        // Goals / penalties / game end: play once
     case playConfiguredTrackThenAdvance // Icing / Off-side: play own sound, then act as Avblåsning
+    case playConfiguredTrackThenPaus // Entré: play own sound, then start the pause playlist
     case playLoopedTrack            // Timeout: loop one track until stopped (by Tekning)
     case playIntermissionPlaylist   // Paus
 
@@ -182,7 +185,8 @@ enum EventAction: Equatable {
     /// or looped), as opposed to a playlist or a fixed behaviour.
     var bindsSingleTrack: Bool {
         switch self {
-        case .playConfiguredTrack, .playConfiguredTrackThenAdvance, .playLoopedTrack:
+        case .playConfiguredTrack, .playConfiguredTrackThenAdvance,
+             .playConfiguredTrackThenPaus, .playLoopedTrack:
             return true
         case .advanceGamePlaylist, .stopAll, .playIntermissionPlaylist:
             return false
