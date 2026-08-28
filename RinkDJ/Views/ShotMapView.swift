@@ -38,7 +38,7 @@ struct ShotMapView: View {
         ZStack {
             BrandBackground(accent: accent)
 
-            HockeyRinkView(accent: accent)
+            HockeyRinkView(accent: accent, branding: store.config.branding)
                 .padding(8)
 
             // End labels naming which team's shots land at each net (matches the mirroring).
