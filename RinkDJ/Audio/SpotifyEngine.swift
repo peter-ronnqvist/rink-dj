@@ -104,22 +104,23 @@ final class SpotifyEngine: NSObject, AudioEngine {
     }
 
     func playOneShot(_ resource: AudioResource, completion: (() -> Void)?) {
-        guard case .spotify(let uri, _) = resource else { completion?(); return }
-        play(uri: uri) { [weak self] in
-            self?.armOneShotCompletion(completion)
+        guard case .spotify(let uri, _, _) = resource else { completion?(); return }
+        let startMs = resource.spotifyStartMs
+        play(uri: uri, startMs: startMs) { [weak self] in
+            self?.armOneShotCompletion(completion, startMs: startMs)
         }
     }
 
     func playPlaylist(_ resources: [AudioResource], loop: Bool) {
-        guard let first = resources.first, case .spotify(let uri, _) = first else { return }
-        play(uri: uri) { [weak self] in
+        guard let first = resources.first, case .spotify(let uri, _, _) = first else { return }
+        play(uri: uri, startMs: first.spotifyStartMs) { [weak self] in
             self?.appRemote.playerAPI?.setRepeatMode(loop ? .context : .off) { _, _ in }
         }
     }
 
     func playLooping(_ resource: AudioResource) {
-        guard case .spotify(let uri, _) = resource else { return }
-        play(uri: uri) { [weak self] in
+        guard case .spotify(let uri, _, _) = resource else { return }
+        play(uri: uri, startMs: resource.spotifyStartMs) { [weak self] in
             self?.appRemote.playerAPI?.setRepeatMode(.track) { _, _ in }
         }
     }
@@ -179,14 +180,20 @@ final class SpotifyEngine: NSObject, AudioEngine {
     ///    re-establishes. This is what lets Avblåsning play the next Spotify track after a
     ///    long event sound.
     ///  - No token yet: authorize (which opens Spotify), then play + `postPlay` on connect.
-    private func play(uri: String, postPlay: @escaping () -> Void) {
+    private func play(uri: String, startMs: Int = 0, postPlay: @escaping () -> Void) {
         if appRemote.isConnected {
             appRemote.playerAPI?.play(uri) { [weak self] _, error in
                 self?.report(error)
+                self?.seekIfNeeded(startMs)
                 postPlay()
             }
         } else if appRemote.connectionParameters.accessToken != nil {
-            pendingAction = postPlay
+            // Relaunching with the URI (`authorizeAndPlayURI`) starts playback itself, so
+            // the seek has to run after the connection re-establishes — do it in pendingAction.
+            pendingAction = { [weak self] in
+                self?.seekIfNeeded(startMs)
+                postPlay()
+            }
             appRemote.authorizeAndPlayURI(uri, asRadio: false,
                                           additionalScopes: Self.authScopes) { [weak self] success in
                 if !success { self?.connectionError = "Kunde inte återansluta till Spotify." }
@@ -195,11 +202,19 @@ final class SpotifyEngine: NSObject, AudioEngine {
             pendingAction = { [weak self] in
                 self?.appRemote.playerAPI?.play(uri) { _, error in
                     self?.report(error)
+                    self?.seekIfNeeded(startMs)
                     postPlay()
                 }
             }
             authorize()
         }
+    }
+
+    /// Seek the current Spotify stream to `startMs`, unless it's the default 0 (play from
+    /// the start). Used so an event track with a long intro can begin at the good part.
+    private func seekIfNeeded(_ startMs: Int) {
+        guard startMs > 0 else { return }
+        appRemote.playerAPI?.seek(toPosition: startMs) { _, _ in }
     }
 
     private func report(_ error: Error?) {
@@ -210,13 +225,17 @@ final class SpotifyEngine: NSObject, AudioEngine {
     /// Spotify has no reliable "track ended" callback for a single track, so we time it
     /// from the track's remaining duration — good enough for the Icing/Off-side chain,
     /// and cancelled by `stop()` or the next playback action.
-    private func armOneShotCompletion(_ completion: (() -> Void)?) {
+    private func armOneShotCompletion(_ completion: (() -> Void)?, startMs: Int = 0) {
         cancelOneShotCompletion()
         guard let completion else { return }
         oneShotCompletion = completion
         appRemote.playerAPI?.getPlayerState { [weak self] state, _ in
             guard let self, let state = state as? SPTAppRemotePlayerState else { return }
-            let remaining = Int(state.track.duration) - Int(state.playbackPosition)
+            // The seek may not be reflected in `playbackPosition` yet, so take whichever of
+            // the requested offset and the reported position is further in — otherwise a
+            // seeked track would appear to have its full length remaining and advance late.
+            let position = max(startMs, Int(state.playbackPosition))
+            let remaining = Int(state.track.duration) - position
             self.scheduleOneShotCompletion(afterMs: remaining)
         }
     }

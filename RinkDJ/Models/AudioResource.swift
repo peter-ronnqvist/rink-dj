@@ -18,12 +18,17 @@ enum AudioResource: Codable, Hashable, Identifiable {
     /// captured when the item is picked from Spotify, so lists don't show raw URIs. It is
     /// optional so older saved configs (which stored only a URI) still decode — the
     /// synthesized decoder fills it with `nil`.
-    case spotify(uri: String, name: String? = nil)
+    ///
+    /// `startMs` is an optional playback start offset in milliseconds: when a Spotify event
+    /// track has a non-zero offset, `SpotifyEngine` seeks the stream there on play (used to
+    /// skip a long intro). `nil`/`0` means "play from the start". Optional (with default)
+    /// so configs saved before this existed still decode as `nil`.
+    case spotify(uri: String, name: String? = nil, startMs: Int? = nil)
 
     var id: String {
         switch self {
         case .localFile(let name): return "local:\(name)"
-        case .spotify(let uri, _): return "spotify:\(uri)"
+        case .spotify(let uri, _, _): return "spotify:\(uri)"
         }
     }
 
@@ -32,9 +37,16 @@ enum AudioResource: Codable, Hashable, Identifiable {
         switch self {
         case .localFile(let name):
             return (name as NSString).lastPathComponent
-        case .spotify(let uri, let name):
+        case .spotify(let uri, let name, _):
             return name ?? uri
         }
+    }
+
+    /// Playback start offset in milliseconds for a Spotify track (`0` for local files or
+    /// when unset). Read by the UI and `SpotifyEngine` to decide whether to seek on play.
+    var spotifyStartMs: Int {
+        if case .spotify(_, _, let ms) = self { return ms ?? 0 }
+        return 0
     }
 
     /// Short badge text describing where the audio comes from.

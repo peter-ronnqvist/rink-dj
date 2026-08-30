@@ -100,7 +100,7 @@ struct ControlView: View {
     /// generic note icon.
     @ViewBuilder
     private var nowPlayingSourceMark: some View {
-        if case .spotify(let uri, _) = coordinator.nowPlayingResource {
+        if case .spotify(let uri, _, _) = coordinator.nowPlayingResource {
             Button {
                 if let url = URL(string: uri) { openURL(url) }
             } label: {

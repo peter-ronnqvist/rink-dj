@@ -48,6 +48,23 @@ struct ResourcePickerView: View {
                 }
             }
 
+            // Only Spotify streams can be seeked, so this is hidden for local files.
+            if case .spotify = resource {
+                Section {
+                    HStack {
+                        Text("Starta från (ms)")
+                        Spacer()
+                        TextField("0", value: startMsBinding, format: .number)
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(maxWidth: 120)
+                    }
+                } footer: {
+                    Text("Hoppar in i Spotify-låten vid den här tiden i millisekunder "
+                         + "(t.ex. 30000 = 30 s). 0 spelar från början.")
+                }
+            }
+
             Section("Byt låt") {
                 NavigationLink {
                     BundledSoundPickerView(resource: $resource, onChange: onChange)
@@ -86,6 +103,20 @@ struct ResourcePickerView: View {
                 onChange()
             }
         }
+    }
+
+    /// Reads/writes the Spotify start offset by rebuilding the resource with the same
+    /// uri/name and the new `startMs`, then persisting via `onChange`. A `0` clears the
+    /// offset (stored as `nil`) so it plays from the start.
+    private var startMsBinding: Binding<Int> {
+        Binding(
+            get: { resource?.spotifyStartMs ?? 0 },
+            set: { newValue in
+                guard case .spotify(let uri, let name, _) = resource else { return }
+                resource = .spotify(uri: uri, name: name, startMs: newValue > 0 ? newValue : nil)
+                onChange()
+            }
+        )
     }
 
     private func iconName(for resource: AudioResource) -> String {
