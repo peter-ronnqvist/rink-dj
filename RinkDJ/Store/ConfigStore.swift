@@ -81,4 +81,12 @@ final class ConfigStore {
             save()
         }
     }
+
+    /// Store raw logo image bytes (from the Photos picker) into the branding folder and record it.
+    func importLogo(data: Data, suggestedName: String = "logo.png") {
+        if let fileName = FileStore.saveIntoBranding(data: data, suggestedName: suggestedName) {
+            config.branding.logoFileName = fileName
+            save()
+        }
+    }
 }

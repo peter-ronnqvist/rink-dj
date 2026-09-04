@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import PhotosUI
 import UniformTypeIdentifiers
 
 /// Configure the team name, logo and accent colour. Defaults to Flemingsbergs IK but
@@ -7,6 +8,7 @@ import UniformTypeIdentifiers
 struct TeamBrandingView: View {
     @Environment(ConfigStore.self) private var store
     @State private var showLogoImporter = false
+    @State private var photoItem: PhotosPickerItem?
 
     var body: some View {
         @Bindable var store = store
@@ -38,10 +40,13 @@ struct TeamBrandingView: View {
             }
 
             Section {
+                PhotosPicker(selection: $photoItem, matching: .images) {
+                    Label("Välj från Bilder…", systemImage: "photo.on.rectangle")
+                }
                 Button {
                     showLogoImporter = true
                 } label: {
-                    Label("Importera logotyp…", systemImage: "photo")
+                    Label("Välj från Filer…", systemImage: "folder")
                 }
                 if store.config.branding.logoFileName != nil {
                     Button("Använd standardlogotyp", role: .destructive) {
@@ -52,7 +57,7 @@ struct TeamBrandingView: View {
             } header: {
                 Text("Logotyp")
             } footer: {
-                Text("Standard är Flemingsbergs IK. Importera en egen (PNG med transparens rekommenderas) för ett annat lag.")
+                Text("Standard är Flemingsbergs IK. Välj en egen (PNG med transparens rekommenderas) för ett annat lag.")
             }
         }
         .navigationTitle("Lag")
@@ -62,6 +67,15 @@ struct TeamBrandingView: View {
                       allowsMultipleSelection: false) { result in
             if case .success(let urls) = result, let url = urls.first {
                 store.importLogo(from: url)
+            }
+        }
+        .onChange(of: photoItem) {
+            guard let photoItem else { return }
+            Task {
+                if let data = try? await photoItem.loadTransferable(type: Data.self) {
+                    store.importLogo(data: data)
+                }
+                self.photoItem = nil
             }
         }
     }

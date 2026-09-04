@@ -60,6 +60,20 @@ enum FileStore {
         copy(from: source, into: branding)
     }
 
+    /// Save raw image bytes (e.g. from a Photos picker, which yields `Data` rather than a
+    /// file URL) into the branding folder, returning the stored file name.
+    @discardableResult
+    static func saveIntoBranding(data: Data, suggestedName: String = "logo.png") -> String? {
+        let destination = uniqueDestination(for: suggestedName, in: branding)
+        do {
+            try data.write(to: destination, options: .atomic)
+            return destination.lastPathComponent
+        } catch {
+            print("FileStore save failed: \(error)")
+            return nil
+        }
+    }
+
     /// Copy a security-scoped picked file into a destination folder, returning the
     /// stored file name. Handles the sandbox access dance required by the file importer.
     private static func copy(from source: URL, into folder: URL) -> String? {

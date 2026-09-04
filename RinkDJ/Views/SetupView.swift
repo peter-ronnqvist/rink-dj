@@ -21,6 +21,7 @@ struct SetupView: View {
                     playlistSection
                     eventSection(store: store)
                     spotifySection
+                    brandingSection
                     resetSection
                 }
                 .padding()
@@ -113,6 +114,17 @@ struct SetupView: View {
                 .scaledToFit()
                 .frame(height: 21)
                 .accessibilityLabel("Spotify")
+        }
+    }
+
+    private var brandingSection: some View {
+        GroupBox("Lag") {
+            NavigationLink {
+                TeamBrandingView()
+            } label: {
+                row { labeled("Lag & logotyp", store.config.branding.teamName) }
+            }
+            footer("Lagnamnet och logotypen visas överst på matchskärmen. Ställs vanligtvis in en gång.")
         }
     }
 
