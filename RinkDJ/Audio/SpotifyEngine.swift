@@ -43,6 +43,10 @@ final class SpotifyEngine: NSObject, AudioEngine {
     /// Fired when the current one-shot ends naturally (Icing/Off-side → Avblåsning chain).
     @ObservationIgnored private var oneShotCompletion: (() -> Void)?
     @ObservationIgnored private var oneShotEndWork: DispatchWorkItem?
+    /// A start offset (ms) to apply once the requested track actually loads, keyed to its
+    /// URI. Applied in `playerStateDidChange`; see `armSeek(_:uri:)`.
+    @ObservationIgnored private var pendingSeekMs = 0
+    @ObservationIgnored private var pendingSeekURI: String?
 
     @ObservationIgnored private lazy var appRemote: SPTAppRemote = {
         let configuration = SPTConfiguration(clientID: SpotifyConfig.clientID,
@@ -182,27 +186,25 @@ final class SpotifyEngine: NSObject, AudioEngine {
     ///  - No token yet: authorize (which opens Spotify), then play + `postPlay` on connect.
     private func play(uri: String, startMs: Int = 0, postPlay: @escaping () -> Void) {
         if appRemote.isConnected {
+            armSeek(startMs, uri: uri)
             appRemote.playerAPI?.play(uri) { [weak self] _, error in
                 self?.report(error)
-                self?.seekIfNeeded(startMs)
                 postPlay()
             }
         } else if appRemote.connectionParameters.accessToken != nil {
-            // Relaunching with the URI (`authorizeAndPlayURI`) starts playback itself, so
-            // the seek has to run after the connection re-establishes — do it in pendingAction.
-            pendingAction = { [weak self] in
-                self?.seekIfNeeded(startMs)
-                postPlay()
-            }
+            // Relaunching with the URI (`authorizeAndPlayURI`) starts playback itself; the
+            // seek is applied once the loaded track reports in via playerStateDidChange.
+            armSeek(startMs, uri: uri)
+            pendingAction = postPlay
             appRemote.authorizeAndPlayURI(uri, asRadio: false,
                                           additionalScopes: Self.authScopes) { [weak self] success in
                 if !success { self?.connectionError = "Kunde inte återansluta till Spotify." }
             }
         } else {
             pendingAction = { [weak self] in
+                self?.armSeek(startMs, uri: uri)
                 self?.appRemote.playerAPI?.play(uri) { _, error in
                     self?.report(error)
-                    self?.seekIfNeeded(startMs)
                     postPlay()
                 }
             }
@@ -210,11 +212,14 @@ final class SpotifyEngine: NSObject, AudioEngine {
         }
     }
 
-    /// Seek the current Spotify stream to `startMs`, unless it's the default 0 (play from
-    /// the start). Used so an event track with a long intro can begin at the good part.
-    private func seekIfNeeded(_ startMs: Int) {
-        guard startMs > 0 else { return }
-        appRemote.playerAPI?.seek(toPosition: startMs) { _, _ in }
+    /// Remember a start offset (ms) to apply once the requested track actually loads (see
+    /// `playerStateDidChange`). Seeking straight from the play-command completion races with
+    /// track buffering and Spotify resets to 0 — that's why a re-played track lost its offset.
+    /// A zero/negative offset clears any pending seek (play from the start).
+    private func armSeek(_ startMs: Int, uri: String) {
+        guard startMs > 0 else { pendingSeekMs = 0; pendingSeekURI = nil; return }
+        pendingSeekMs = startMs
+        pendingSeekURI = uri
     }
 
     private func report(_ error: Error?) {
@@ -290,6 +295,16 @@ extension SpotifyEngine: SPTAppRemoteDelegate {
 extension SpotifyEngine: SPTAppRemotePlayerStateDelegate {
     func playerStateDidChange(_ playerState: SPTAppRemotePlayerState) {
         nowPlaying = "\(playerState.track.name) – \(playerState.track.artist.name)"
+        // Apply a pending start offset now that the requested track has actually loaded and
+        // is playing. The position guard avoids re-seeking backwards on later state updates
+        // and ignores stale pre-load events for the same URI.
+        if pendingSeekMs > 0, playerState.track.uri == pendingSeekURI, !playerState.isPaused,
+           Int(playerState.playbackPosition) < pendingSeekMs {
+            let ms = pendingSeekMs
+            pendingSeekMs = 0
+            pendingSeekURI = nil
+            appRemote.playerAPI?.seek(toPosition: ms) { _, _ in }
+        }
     }
 }
 
