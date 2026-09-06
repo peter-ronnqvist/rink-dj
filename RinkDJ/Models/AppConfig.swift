@@ -11,9 +11,16 @@ struct AppConfig: Codable {
     /// Tracks played during "Paus" (intermission).
     var intermissionPlaylist: [AudioResource]
 
-    /// Track bound to each configurable event, keyed by `GameEvent.rawValue`.
-    /// (Keyed by String rather than the enum so the JSON is a clean object.)
-    var eventTracks: [String: AudioResource]
+    /// Ordered list of tracks bound to each configurable event, keyed by `GameEvent.rawValue`.
+    /// (Keyed by String rather than the enum so the JSON is a clean object.) Each event button
+    /// steps through its list round-robin — see `PlaybackCoordinator`. Optional-with-default so
+    /// configs saved before lists existed still decode.
+    var eventTrackLists: [String: [AudioResource]] = [:]
+
+    /// Legacy single-track-per-event storage, kept only so pre-list configs can be migrated to
+    /// `eventTrackLists` on launch (see `ConfigStore.migrateLegacyEventTracks`). Optional so the
+    /// synthesized encoder omits it once migration has cleared it — new configs never write it.
+    var eventTracks: [String: AudioResource]? = nil
 
     var branding: TeamBranding
 
@@ -30,19 +37,19 @@ struct AppConfig: Codable {
         set { advancedMode = newValue }
     }
 
-    func track(for event: GameEvent) -> AudioResource? {
-        eventTracks[event.rawValue]
+    func tracks(for event: GameEvent) -> [AudioResource] {
+        eventTrackLists[event.rawValue] ?? []
     }
 
-    mutating func setTrack(_ resource: AudioResource?, for event: GameEvent) {
-        eventTracks[event.rawValue] = resource
+    mutating func setTracks(_ resources: [AudioResource], for event: GameEvent) {
+        eventTrackLists[event.rawValue] = resources
     }
 
-    /// The out-of-the-box default track bound to an event (nil if it has none). Used by
+    /// The out-of-the-box default track list bound to an event (empty if it has none). Used by
     /// Setup to offer a "restore default sound" action, since the file importer can only
     /// browse user files — not the sounds bundled inside the app.
-    static func defaultTrack(for event: GameEvent) -> AudioResource? {
-        demo.eventTracks[event.rawValue]
+    static func defaultTracks(for event: GameEvent) -> [AudioResource] {
+        demo.eventTrackLists[event.rawValue] ?? []
     }
 
     // MARK: Default configuration
@@ -55,16 +62,16 @@ struct AppConfig: Codable {
             // The Paus-spellista holds one whole Spotify playlist (or nothing); it has no
             // local demo seed, so it starts empty until a Spotify playlist is picked.
             intermissionPlaylist: [],
-            eventTracks: [
-                GameEvent.icing.rawValue:          .localFile(fileName: "icing.mp3"),
-                GameEvent.offside.rawValue:        .localFile(fileName: "offside.mp3"),
-                GameEvent.hemmamal.rawValue:       .localFile(fileName: "FlempanGoal.mp3"),
-                GameEvent.bortamal.rawValue:       .localFile(fileName: "frolic.mp3"),
-                GameEvent.hemmautvisning.rawValue: .localFile(fileName: "wopwop.mp3"),
-                GameEvent.bortautvisning.rawValue: .localFile(fileName: "wopwop.mp3"),
-                GameEvent.fulltalig.rawValue:      .localFile(fileName: "fullStrength.mp3"),
-                GameEvent.timeout.rawValue:        .localFile(fileName: "cricket.mp3"),
-                GameEvent.matchslut.rawValue:      .localFile(fileName: "wopwop.mp3")
+            eventTrackLists: [
+                GameEvent.icing.rawValue:          [.localFile(fileName: "icing.mp3")],
+                GameEvent.offside.rawValue:        [.localFile(fileName: "offside.mp3")],
+                GameEvent.hemmamal.rawValue:       [.localFile(fileName: "FlempanGoal.mp3")],
+                GameEvent.bortamal.rawValue:       [.localFile(fileName: "frolic.mp3")],
+                GameEvent.hemmautvisning.rawValue: [.localFile(fileName: "wopwop.mp3")],
+                GameEvent.bortautvisning.rawValue: [.localFile(fileName: "wopwop.mp3")],
+                GameEvent.fulltalig.rawValue:      [.localFile(fileName: "fullStrength.mp3")],
+                GameEvent.timeout.rawValue:        [.localFile(fileName: "cricket.mp3")],
+                GameEvent.matchslut.rawValue:      [.localFile(fileName: "wopwop.mp3")]
             ],
             branding: .flemingsbergsIK,
             advancedMode: false

@@ -21,6 +21,11 @@ final class PlaybackCoordinator {
     /// Position within the game playlist; advances on every "Avblåsning".
     private(set) var gamePlaylistIndex: Int = -1
 
+    /// Per-event cursor into each event's track list, keyed by `GameEvent.rawValue`. Each press
+    /// of an event button advances its cursor round-robin (see `nextEventTrack`). Runtime-only —
+    /// like `gamePlaylistIndex`, it resets on app relaunch and isn't persisted.
+    private var eventTrackIndices: [String: Int] = [:]
+
     private let engines: [AudioEngine]
 
     init(engines: [AudioEngine] = [LocalAudioEngine(), SpotifyEngine()]) {
@@ -45,44 +50,44 @@ final class PlaybackCoordinator {
                          label: "Paus", emptyMessage: "Ingen paus-spellista vald")
 
         case .playConfiguredTrack:
-            guard let resource = config.track(for: event) else {
+            guard let pick = nextEventTrack(for: event, config: config) else {
                 nowPlaying = "Ingen låt vald för \(event.title)"
                 return
             }
-            playOneShot(resource)
-            nowPlaying = "\(event.title): \(resource.displayName)"
+            playOneShot(pick.resource)
+            nowPlaying = eventNowPlaying(event, pick)
 
         case .playConfiguredTrackThenAdvance:
-            guard let resource = config.track(for: event) else {
+            guard let pick = nextEventTrack(for: event, config: config) else {
                 // No sound bound: still behave as an Avblåsning.
                 handle(.avblasning, config: config)
                 return
             }
             // Play the event's own sound, then act as Avblåsning once it finishes.
-            playOneShot(resource) { [weak self] in
+            playOneShot(pick.resource) { [weak self] in
                 self?.handle(.avblasning, config: config)
             }
-            nowPlaying = "\(event.title): \(resource.displayName)"
+            nowPlaying = eventNowPlaying(event, pick)
 
         case .playConfiguredTrackThenPaus:
-            guard let resource = config.track(for: event) else {
+            guard let pick = nextEventTrack(for: event, config: config) else {
                 // No sound bound: go straight to the pause playlist.
                 handle(.paus, config: config)
                 return
             }
             // Play the event's own sound (e.g. Entré), then start the pause playlist.
-            playOneShot(resource) { [weak self] in
+            playOneShot(pick.resource) { [weak self] in
                 self?.handle(.paus, config: config)
             }
-            nowPlaying = "\(event.title): \(resource.displayName)"
+            nowPlaying = eventNowPlaying(event, pick)
 
         case .playLoopedTrack:
-            guard let resource = config.track(for: event) else {
+            guard let pick = nextEventTrack(for: event, config: config) else {
                 nowPlaying = "Ingen låt vald för \(event.title)"
                 return
             }
-            playLooping(resource)
-            nowPlaying = "\(event.title) (repeterar): \(resource.displayName)"
+            playLooping(pick.resource)
+            nowPlaying = eventNowPlaying(event, pick, suffix: " (repeterar)")
         }
     }
 
@@ -92,6 +97,32 @@ final class PlaybackCoordinator {
     }
 
     // MARK: - Helpers
+
+    /// One track chosen from an event's list, with its position for the now-playing label.
+    private struct EventPick {
+        let resource: AudioResource
+        let index: Int
+        let total: Int
+    }
+
+    /// Advance the round-robin cursor for `event` and return the next track to play, or `nil`
+    /// when the event has no tracks configured. Mirrors `advanceGamePlaylist`'s wrap-around:
+    /// the first press plays index 0, then 1, …, wrapping back to 0 after the last.
+    private func nextEventTrack(for event: GameEvent, config: AppConfig) -> EventPick? {
+        let tracks = config.tracks(for: event)
+        guard !tracks.isEmpty else { return nil }
+        let key = event.rawValue
+        let next = ((eventTrackIndices[key] ?? -1) + 1) % tracks.count
+        eventTrackIndices[key] = next
+        return EventPick(resource: tracks[next], index: next, total: tracks.count)
+    }
+
+    /// Now-playing label for an event pick, showing the position only when the list has more
+    /// than one track (a single-track button reads like it always did).
+    private func eventNowPlaying(_ event: GameEvent, _ pick: EventPick, suffix: String = "") -> String {
+        let position = pick.total > 1 ? " (\(pick.index + 1)/\(pick.total))" : ""
+        return "\(event.title)\(suffix)\(position): \(pick.resource.displayName)"
+    }
 
     private func advanceGamePlaylist(_ playlist: [AudioResource]) {
         guard !playlist.isEmpty else {
