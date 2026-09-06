@@ -12,9 +12,12 @@ final class ConfigStore {
     init() {
         let loaded = Self.load()
         self.config = loaded ?? .demo
-        // A saved config from an earlier version won't contain events added later
-        // (e.g. Icing/Off-side). Backfill their bundled defaults so they aren't silent.
         if loaded != nil {
+            // Upgrade configs saved before events held a *list* of tracks: fold each
+            // single track into a one-item list.
+            migrateLegacyEventTracks()
+            // A saved config from an earlier version won't contain events added later
+            // (e.g. Icing/Off-side). Backfill their bundled defaults so they aren't silent.
             backfillMissingEventDefaults()
         }
     }
@@ -49,17 +52,31 @@ final class ConfigStore {
     /// team branding untouched. Recovers the case where a sound was cleared or changed
     /// and the bundled default (e.g. FlempanGoal.mp3) can't be re-picked from Files.
     func restoreDefaultEventSounds() {
-        config.eventTracks = AppConfig.demo.eventTracks
+        config.eventTrackLists = AppConfig.demo.eventTrackLists
         save()
     }
 
-    /// Give any event with no bound track its bundled default. Unlike
+    /// Fold a pre-list config's single-track-per-event map into `eventTrackLists`, one item
+    /// per event, then clear the legacy field so it's never written again. Only events not
+    /// already present in `eventTrackLists` are migrated, so a partially-upgraded config is
+    /// left alone.
+    private func migrateLegacyEventTracks() {
+        guard let legacy = config.eventTracks else { return }
+        for (key, resource) in legacy where config.eventTrackLists[key] == nil {
+            config.eventTrackLists[key] = [resource]
+        }
+        config.eventTracks = nil
+        save()
+    }
+
+    /// Give any event with no bound tracks its bundled default list. Unlike
     /// `restoreDefaultEventSounds`, this only fills gaps — sounds the user has already
     /// chosen are kept. Used on launch so events added in an update start with a sound.
     private func backfillMissingEventDefaults() {
         var changed = false
-        for (key, resource) in AppConfig.demo.eventTracks where config.eventTracks[key] == nil {
-            config.eventTracks[key] = resource
+        for (key, resources) in AppConfig.demo.eventTrackLists
+        where (config.eventTrackLists[key] ?? []).isEmpty {
+            config.eventTrackLists[key] = resources
             changed = true
         }
         if changed { save() }

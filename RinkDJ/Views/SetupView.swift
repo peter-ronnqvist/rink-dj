@@ -72,16 +72,15 @@ struct SetupView: View {
         GroupBox("Händelselåtar") {
             ForEach(GameEvent.configurableTrackEvents) { event in
                 NavigationLink {
-                    ResourcePickerView(
+                    EventTrackListView(
                         title: event.title,
-                        resource: bindingForTrack(of: event),
+                        resources: bindingForTracks(of: event),
                         onChange: store.save,
-                        defaultResource: AppConfig.defaultTrack(for: event)
+                        defaultResources: AppConfig.defaultTracks(for: event)
                     )
                 } label: {
                     row {
-                        labeled(event.title,
-                                store.config.track(for: event)?.displayName ?? "Ingen")
+                        labeled(event.title, "\(store.config.tracks(for: event).count) låtar")
                     }
                 }
                 Divider()
@@ -186,11 +185,11 @@ struct SetupView: View {
         )
     }
 
-    /// A binding that reads/writes the track bound to a specific event and saves on change.
-    private func bindingForTrack(of event: GameEvent) -> Binding<AudioResource?> {
+    /// A binding that reads/writes the track list bound to a specific event and saves on change.
+    private func bindingForTracks(of event: GameEvent) -> Binding<[AudioResource]> {
         Binding(
-            get: { store.config.track(for: event) },
-            set: { store.config.setTrack($0, for: event); store.save() }
+            get: { store.config.tracks(for: event) },
+            set: { store.config.setTracks($0, for: event); store.save() }
         )
     }
 }
