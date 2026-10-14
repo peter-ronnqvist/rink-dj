@@ -76,7 +76,8 @@ struct ShotsView: View {
                 }
                 Spacer()
                 HStack {
-                    minusButton(action: homeGoalieLeft ? shots.removeAway : shots.removeHome)
+                    minusButton(corner: .bottomLeading,
+                                action: homeGoalieLeft ? shots.removeAway : shots.removeHome)
                     Spacer()
                     HStack(spacing: 16) {
                         infoButton
@@ -84,7 +85,8 @@ struct ShotsView: View {
                         newGameButton
                     }
                     Spacer()
-                    minusButton(action: homeGoalieLeft ? shots.removeHome : shots.removeAway)
+                    minusButton(corner: .bottomTrailing,
+                                action: homeGoalieLeft ? shots.removeHome : shots.removeAway)
                 }
             }
             .padding(20)
@@ -199,13 +201,18 @@ struct ShotsView: View {
         .disabled(!shots.canAdvancePeriod)
     }
 
-    /// Deliberately small and low-contrast so it isn't hit by accident during play.
-    private func minusButton(action: @escaping () -> Void) -> some View {
+    /// Visually discreet (low-contrast glyph tucked into the corner) so it doesn't draw the
+    /// eye during play, but with a generous hit area extending up and inward from the glyph
+    /// so a slightly-off tap still subtracts instead of falling through to the rink and
+    /// adding a shot.
+    private func minusButton(corner: Alignment, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: "minus.circle.fill")
-                .font(.title2)
+                .font(.title)
                 .foregroundStyle(.secondary)
                 .opacity(0.5)
+                .frame(width: 88, height: 88, alignment: corner)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
